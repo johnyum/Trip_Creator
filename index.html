@@ -188,6 +188,15 @@
   .d1 { left:119px; } .d2 { left:163px; } .d3 { left:207px; } .d4 { left:251px; }
   .dock-btn svg { width:18px; height:18px; }
 
+  /* Large web view (desktop ≥600px): center the vibes strip and bottom controls.
+     The mobile build runs in a 402-wide viewport, so this never triggers on phones. */
+  @media (min-width:600px) {
+    .cards-scroll { justify-content:center; }
+    .pill { left:50%; transform:translateX(-50%); }
+    .d1 { left:calc(50% - 82px); } .d2 { left:calc(50% - 38px); }
+    .d3 { left:calc(50% + 6px); } .d4 { left:calc(50% + 50px); }
+  }
+
   /* once airport pins are on screen, drop the little flight glyph from the city pills */
   .screen.airports-visible .mk-fly { display:none; }
 
@@ -271,6 +280,8 @@
   body{ align-items:flex-start; }
   .stage{ transform:none !important; }
   .screen{ width:100vw !important; height:100vh !important; height:100dvh !important; border-radius:0 !important; box-shadow:none !important; }
+  .pill{ top:auto; bottom:88px; }
+  .dock-btn{ top:auto; bottom:40px; }
   .status{ display:none !important; }
 </style>
 </head>
@@ -1287,7 +1298,7 @@ return maplibregl$1;
     arcSvg.style.display = 'none'; arcTime.style.display = 'none';
     if (flightEndMarker) { flightEndMarker.remove(); flightEndMarker = null; }
     fsheet.style.transform = 'translateY(108%)';
-    fpill.style.top = '730px'; setTimeout(() => fpill.classList.remove('flight'), 540);
+    fpill.style.top = (SCREEN.clientHeight - 144) + 'px'; setTimeout(() => { fpill.classList.remove('flight'); fpill.style.top = ''; }, 540);
     SCREEN.querySelector('.cards-scroll').style.display = '';
     document.querySelectorAll('.dock-btn').forEach(d => d.style.display = '');
     updateSearchBar();
