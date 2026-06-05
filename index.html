@@ -160,7 +160,7 @@
 
   /* Search pill */
   .pill {
-    position:absolute; left:24px; top:730px; width:354px; height:56px; border-radius:28px;
+    position:absolute; left:24px; right:24px; top:730px; height:56px; border-radius:28px;
     background:#fff; display:flex; align-items:center; gap:6px; padding:0 8px; z-index:4;
     box-shadow:0 10px 28px rgba(0,0,0,.13), 0 2px 6px rgba(0,0,0,.06);
   }
@@ -178,23 +178,21 @@
 
   /* Dock */
   .dock-btn {
-    position:absolute; top:802px; width:32px; height:32px; border-radius:50%;
+    position:absolute; top:802px; width:40px; height:40px; border-radius:50%;
     background:var(--circle); display:flex; align-items:center; justify-content:center;
     box-shadow:0 2px 6px rgba(0,0,0,.08); cursor:pointer; color:var(--icon-grey); z-index:4;
     transition:transform .12s ease, background .15s ease;
   }
   .dock-btn:active { transform:scale(.9); }
   .dock-btn.on { background:var(--accent); color:#fff; box-shadow:0 4px 10px rgba(73,144,239,.45); }
-  .d1 { left:119px; } .d2 { left:163px; } .d3 { left:207px; } .d4 { left:251px; }
-  .dock-btn svg { width:18px; height:18px; }
+  .d1 { left:calc(50% - 104px); } .d2 { left:calc(50% - 48px); } .d3 { left:calc(50% + 8px); } .d4 { left:calc(50% + 64px); }
+  .dock-btn svg { width:20px; height:20px; }
 
   /* Large web view (desktop ≥600px): center the vibes strip and bottom controls.
      The mobile build runs in a 402-wide viewport, so this never triggers on phones. */
   @media (min-width:600px) {
     .cards-scroll { justify-content:center; }
-    .pill { left:50%; transform:translateX(-50%); }
-    .d1 { left:calc(50% - 82px); } .d2 { left:calc(50% - 38px); }
-    .d3 { left:calc(50% + 6px); } .d4 { left:calc(50% + 50px); }
+    .pill { left:50%; right:auto; transform:translateX(-50%); width:400px; max-width:calc(100% - 48px); }
   }
 
   /* once airport pins are on screen, drop the little flight glyph from the city pills */
