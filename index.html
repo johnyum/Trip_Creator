@@ -684,7 +684,8 @@ return maplibregl$1;
         }
       },
       layers: [
-        { id: 'space', type: 'background', paint: { 'background-color': 'rgba(0,0,0,0)' } },
+        { id: 'space', type: 'background', paint: { 'background-color':
+            ['interpolate', ['linear'], ['zoom'], 4, '#0a0f1f', 4.6, '#0a0f1f', 6, '#e9eef1'] } },
         { id: 'carto', type: 'raster', source: 'carto' }
       ]
     },
