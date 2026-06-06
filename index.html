@@ -1584,19 +1584,19 @@ return maplibregl$1;
   let _cardFadeT = null;
   function fadeCards(render) {
     clearTimeout(_cardFadeT);
-    wrap.style.transition = 'opacity .18s ease, transform .18s ease';
+    wrap.style.transition = 'opacity .2s ease, transform .2s ease';
     wrap.style.opacity = '0';
     wrap.style.transform = 'translateY(6px)';
     _cardFadeT = setTimeout(() => {
       render();
       wrap.style.transition = 'none';
       wrap.style.opacity = '0';
-      wrap.style.transform = 'translateY(12px)';
+      wrap.style.transform = 'translateY(13px)';
       wrap.getBoundingClientRect();                       // commit the start state before animating
-      wrap.style.transition = 'opacity .32s ease, transform .34s cubic-bezier(.34,1.06,.5,1)';
+      wrap.style.transition = 'opacity .6s ease, transform .6s cubic-bezier(.16,1,.3,1)';
       wrap.style.opacity = '1';
       wrap.style.transform = 'translateY(0)';
-    }, 180);
+    }, 200);
   }
   function showGlobalCards() {
     wrap.innerHTML = GLOBAL_CARDS_HTML;
@@ -1617,11 +1617,11 @@ return maplibregl$1;
     const z = map.getZoom();
     if (z >= LOCAL_Z) {
       const t = nearestTown(map.getCenter()), type = t ? t.type : 'default';
-      if (localType !== type) { localType = type; fadeCards(() => showLocalCards(type)); if (!metro) { currentSpots = spotsFor(activeVibe); clearMarkers(); layout(); } }
+      if (localType !== type) { localType = type; fadeCards(() => showLocalCards(type)); if (!metro) { currentSpots = spotsFor(activeVibe); layout(); } }
       updateSearchBar();
     } else if (localType) {
       localType = null; metro = false; fadeCards(showGlobalCards);
-      activeVibe = globalVibe; currentSpots = spotsFor(globalVibe); clearMarkers(); layout();
+      activeVibe = globalVibe; currentSpots = spotsFor(globalVibe); layout();
       updateSearchBar();
     }
   }
