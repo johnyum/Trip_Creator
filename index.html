@@ -949,7 +949,7 @@ return maplibregl$1;
       viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom() });
       const lngs = g.pts.map(s=>s.lng), lats = g.pts.map(s=>s.lat), p = 0.012;
       map.fitBounds([[Math.min(...lngs)-p, Math.min(...lats)-p], [Math.max(...lngs)+p, Math.max(...lats)+p]],
-        { padding:{ top:150, bottom:172, left:48, right:48 }, maxZoom:15, duration:900 });
+        { padding:{ top:160, bottom:196, left:56, right:56 }, maxZoom:15, duration:900 });
     });
     const m = new maplibregl.Marker({ element: el, anchor: 'bottom', occludedOpacity: 0 }).setLngLat([g.lng, g.lat]).addTo(map);
     return { m, lng: g.lng, lat: g.lat, far: false };
@@ -1156,7 +1156,7 @@ return maplibregl$1;
     mode = 'air'; restyleAirpins();
     if (activeVibe) currentSpots = airSpots(activeVibe);
     clearMarkers(); showGlobalCards(); updateSearchBar(); syncChrome();
-    map.easeTo({ center: SF, zoom: 3.0, offset: [0, 32], duration: 1200, easing: t => 1 - Math.pow(1 - t, 3), essential: true });
+    map.easeTo({ center: SF, zoom: 4.0, offset: [0, 32], duration: 1200, easing: t => 1 - Math.pow(1 - t, 3), essential: true });
   }
   locPinEl.addEventListener('click', goHome);
 
@@ -1480,7 +1480,7 @@ return maplibregl$1;
   const locEl = document.getElementById('loc-indicator');
   const locPtr = locEl.querySelector('.loc-ptr-wrap');
   locEl.addEventListener('click', goHome);   // tapping the edge indicator also returns home
-  const LR = 22, RECT = { l:30, t:214, r:372, b:700 };
+  const LR = 22, RECT = { l:22, t:96, r:380, b:852 };
   function angDist(lo1, la1, lo2, la2) {   // great-circle angle in degrees
     const r = Math.PI/180; la1 *= r; la2 *= r;
     const c = Math.sin(la1)*Math.sin(la2) + Math.cos(la1)*Math.cos(la2)*Math.cos((lo2-lo1)*r);
@@ -1678,7 +1678,7 @@ return maplibregl$1;
     const south = Math.max(lats[0], mt - 20), north = Math.min(lats[lats.length-1], mt + 20);
     const maxZ = mode === 'walk' ? 13.0 : (mode === 'air' ? 7.5 : 7.0);
     map.fitBounds([[west, south], [east, north]],
-      { padding:{ top:150, bottom:176, left:46, right:46 }, maxZoom:maxZ,
+      { padding:{ top:160, bottom:200, left:56, right:56 }, maxZoom:maxZ,
          duration:1100, easing:t => 1 - Math.pow(1 - t, 3), essential:true });
     map.once('moveend', layout); layout();
   }
@@ -1735,7 +1735,7 @@ return maplibregl$1;
     const all = cd.region.flatMap(v => v.spots);
     const lngs = all.map(s => s[2]), lats = all.map(s => s[1]);
     map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-      { padding:{ top:120, bottom:230, left:42, right:42 }, maxZoom: cd.regionMaxZoom || 9, duration:1300,
+      { padding:{ top:140, bottom:256, left:54, right:54 }, maxZoom: cd.regionMaxZoom || 9, duration:1300,
         easing: t => 1 - Math.pow(1 - t, 3), essential:true });
     map.once('moveend', layout); layout();
     syncChrome(); updateSearchBar();
@@ -1755,7 +1755,7 @@ return maplibregl$1;
     clearMarkers();
     const lngs = tr.spots.map(s => s[2]), lats = tr.spots.map(s => s[1]);
     map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-      { padding:{ top:150, bottom:200, left:48, right:48 }, maxZoom: tr.zoom || 12, duration:1400,
+      { padding:{ top:150, bottom:220, left:48, right:48 }, maxZoom: tr.zoom || 12, duration:1400,
         easing: t => 1 - Math.pow(1 - t, 3), essential:true });
     map.once('moveend', layout); layout();
     syncChrome(); updateSearchBar();
@@ -2327,7 +2327,7 @@ return maplibregl$1;
     introFlight = true;
     const LNG0 = FAR[0], LNG1 = SF[0] + 360;   // 88° -> 238° (=122°W): the Pacific route
     const LAT0 = FAR[1], LAT1 = SF[1];
-    const Z0 = 1.5, Z1 = 3.0, DUR = 3200;
+    const Z0 = 1.5, Z1 = 4.0, DUR = 3200;
     const smooth = x => x*x*(3 - 2*x);          // smoothstep, C1-continuous (no velocity jumps)
     let t0 = 0;
     function fly(ts) {
