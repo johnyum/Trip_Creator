@@ -339,7 +339,7 @@
     background:var(--glass-bg); -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
     border:0.5px solid var(--glass-border); display:flex; align-items:center; justify-content:center;
     box-shadow:var(--glass-shadow), var(--glass-sheen); cursor:pointer; color:var(--icon-grey); z-index:4;
-    transition:transform .14s var(--ease-out), background .18s var(--ease-out), box-shadow .18s var(--ease-out);
+    transition:transform .14s var(--ease-out), background .18s var(--ease-out), box-shadow .18s var(--ease-out), width .42s var(--ease-smooth), left .42s var(--ease-smooth);
   }
   .dock-btn:active { transform:scale(.9); }
   .dock-btn.on { background:var(--m, var(--accent)); border-color:transparent; color:#fff; -webkit-backdrop-filter:none; backdrop-filter:none; box-shadow:0 6px 16px rgba(18,28,54,.30), inset 0 1px 0 rgba(255,255,255,.30); }
@@ -347,34 +347,21 @@
   .d1 { --m:var(--m-air); } .d2 { --m:var(--m-car); } .d3 { --m:var(--m-transit); } .d4 { --m:var(--m-walk); }
   .dock-btn svg { width:20px; height:20px; }
 
-  /* City level: the transport dock slides down out of view and a backing sheet rises behind the
-     search bar — a draggable pull tab on top (like the flight sheet) and a "Search flights" box.
-     The sheet drags between an open detent (CTA showing) and a collapsed one (just the search bar,
-     ~40px above the bottom); it never dismisses. Transform is driven by JS, not the .up class. */
-  .dock-btn.gone { transform:translateY(96px); opacity:0; pointer-events:none;
-    transition:transform .42s var(--ease-smooth), opacity .26s ease; }
-  .citysheet {
-    position:absolute; left:0; right:0; top:697px; bottom:0; z-index:3;
-    background:#fff; border-radius:26px 26px 0 0; box-shadow:0 -14px 40px rgba(0,0,0,.16);
-    transform:translateY(120%); transition:transform .5s var(--ease-smooth);
-    will-change:transform; touch-action:none; cursor:grab;
+  /* Medium zoom (Greater-LA region): the air tab grows rightward into a "Book a flight" pill while
+     the other transport options tuck away. Toggled via .book / .tucked in syncChrome. */
+  .dock-label { display:none; white-space:nowrap; font:600 15px/1 var(--cereal); color:#fff; }
+  .dock-btn.book {
+    width:176px; border-radius:22px; justify-content:center; gap:9px; padding:0 18px;
+    left:50%; transform:translateX(-50%);
+    background:var(--m-air); border-color:transparent; color:#fff;
+    -webkit-backdrop-filter:none; backdrop-filter:none;
+    box-shadow:0 8px 20px rgba(40,90,210,.38), inset 0 1px 0 rgba(255,255,255,.30);
+    transition:width .42s var(--ease-smooth), left .42s var(--ease-smooth), transform .42s var(--ease-smooth), background .2s var(--ease-out);
   }
-  /* When the search bar is reparented INTO the sheet it gets this class so its
-     position is measured from the sheet top (not the screen) and it rides the
-     sheet's single transform. */
-  .citysheet > .pill { top:23px !important; left:24px; right:24px; transform:none !important; }
-  .cs-head { position:absolute; top:0; left:0; right:0; height:23px; touch-action:none; cursor:grab; z-index:2; }
-  .cs-grip { position:absolute; top:10px; left:50%; transform:translateX(-50%);
-    width:38px; height:5px; border-radius:3px; background:#dcdcdc; }
-  .cs-cta {
-    position:absolute; top:95px; left:24px; right:24px; height:52px; box-sizing:border-box;
-    display:flex; align-items:center; justify-content:center; gap:9px;
-    border:1px solid #ececec; border-radius:18px; background:#fff; box-shadow:0 3px 12px rgba(0,0,0,.08);
-    cursor:pointer; font:600 15px/1 var(--cereal); color:#222;
-    transition:transform .12s var(--ease-out);
-  }
-  .cs-cta:active { transform:scale(.985); }
-  .cs-cta svg { width:18px; height:18px; color:#222; flex:0 0 auto; }
+  .dock-btn.book .dock-label { display:inline-block; }
+  .dock-btn.book:active { transform:translateX(-50%) scale(.97); }
+  .dock-btn.tucked { opacity:0; transform:scale(.4); pointer-events:none;
+    transition:transform .34s var(--ease-smooth), opacity .26s ease; }
 
   /* Large web view (desktop ≥600px): center the vibes strip and bottom controls.
      The mobile build runs in a 402-wide viewport, so this never triggers on phones. */
@@ -591,7 +578,7 @@
 <rect width="16" height="16" fill="white"/>
 </clipPath>
 </defs>
-</svg></div>
+</svg><span class="dock-label">Book a flight</span></div>
     <div class="dock-btn d2" data-mode="car"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M11.6535 2.25C12.1412 2.25 12.5843 2.53367 12.7885 2.9765L12.8235 3.0615L13.4575 4.75H15.5V6.25H14.0195L14.258 6.885C14.8575 7.38239 15.2174 8.11111 15.248 8.8895L15.25 9V13.5C15.2502 14.0233 14.8468 14.4583 14.325 14.4975L14.25 14.5H13.25C12.7267 14.5002 12.2917 14.0968 12.2525 13.575L12.25 13.5V12.75H3.75V13.5C3.75017 14.0233 3.34684 14.4583 2.825 14.4975L2.75 14.5H1.75C1.22669 14.5002 0.791748 14.0968 0.7525 13.575L0.75 13.5V9C0.75 8.15 1.136 7.3895 1.742 6.885L1.98 6.25H0.5V4.75H2.5425L3.176 3.061C3.34734 2.60439 3.7686 2.28913 4.255 2.2535L4.3465 2.25H11.6535ZM12.75 8.75C12.3358 8.75 12 9.08579 12 9.5C12 9.91421 12.3358 10.25 12.75 10.25C13.1642 10.25 13.5 9.91421 13.5 9.5C13.5 9.08579 13.1642 8.75 12.75 8.75ZM3.25 8.75C2.83579 8.75 2.5 9.08579 2.5 9.5C2.5 9.91421 2.83579 10.25 3.25 10.25C3.66421 10.25 4 9.91421 4 9.5C4 9.08579 3.66421 8.75 3.25 8.75ZM11 8.85H5V10.15H11V8.85ZM11.48 3.75H4.5195L3.582 6.25H12.4175L11.48 3.75Z" fill="currentColor"/>
 </svg></div>
@@ -608,14 +595,6 @@
 </clipPath>
 </defs>
 </svg></div>
-
-    <div class="citysheet" id="citysheet">
-      <div class="cs-head" id="csHead"><div class="cs-grip"></div></div>
-      <button class="cs-cta" id="csCta">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
-        Search flights
-      </button>
-    </div>
 
     <div class="flightsheet" id="flightsheet">
       <div class="fs-head" id="fsHead">
@@ -1440,82 +1419,17 @@ return maplibregl$1;
     if (stripShown && Math.abs(map.getZoom() - _zSettled) > 0.35) hideStrip();
   });
 
-  // City-level chrome: dock slides away and a backing sheet rises behind the search bar. The sheet
-  // drags between an open detent (Search-flights box showing) and a collapsed one (just the search
-  // bar, ~40px above the bottom). It never swipes away — it stays until you back out or go forward.
-  const citysheet = document.getElementById('citysheet');
-  const csHead = document.getElementById('csHead');
-  const csCta = document.getElementById('csCta');
-  const CITY_COLLAPSE = 58;                 // up (box showing) → resting (search bar ~40px above bottom)
-  let cityTY = 0, cityUp = false;
-  // The search bar (.pill) is reparented INTO the sheet at city level, so ONE transform on the sheet
-  // carries the grip + search bar + Search-flights box together. At country level it floats over the map.
-  function paintCity(ty) {
-    cityTY = ty;
-    citysheet.style.transform = 'translateY(' + ty + 'px)';
-    csCta.style.opacity = String(Math.max(0, 1 - ty / 34));   // box fades as the sheet collapses
-  }
-  function dockPillInSheet() {
-    if (pillEl.parentNode !== citysheet) {
-      pillEl.style.transition = 'none';
-      citysheet.appendChild(pillEl);          // now a child → .citysheet>.pill CSS pins it 23px below the grip
-      pillEl.style.transform = '';
-    }
-  }
-  function undockPill() {
-    if (pillEl.parentNode === citysheet) {
-      pillEl.style.transition = 'none';
-      SCREEN.insertBefore(pillEl, citysheet); // back to floating; reverts to its own top:730 spot
-      pillEl.style.transform = '';
-    }
-  }
-  function showCitySheet() {
-    cityUp = true;
-    dockPillInSheet();
-    citysheet.style.transition = 'transform .5s var(--ease-smooth)';
-    paintCity(CITY_COLLAPSE);                 // rest low: search bar ~40px above the bottom, box tucked away
-  }
-  function hideCitySheet() {
-    cityUp = false;
-    citysheet.style.transition = 'transform .42s var(--ease-smooth)';
-    citysheet.style.transform = 'translateY(120%)';
-    cityTY = 0;
-    undockPill();
-  }
+  // Medium zoom (Greater-LA region): the air tab becomes a "Book a flight" pill and the other
+  // transport options tuck away. Everywhere else the normal four-button dock is shown.
   function syncChrome() {
-    const city = (!!localType || region) && !flightMode;
-    document.querySelectorAll('.dock-btn').forEach(d => d.classList.toggle('gone', city));
-    if (city && !cityUp) showCitySheet();
-    else if (!city && cityUp) hideCitySheet();
+    const bookMode = region && !flightMode;
+    const air = document.querySelector('.dock-btn.d1');
+    if (air) air.classList.toggle('book', bookMode);
+    ['.d2', '.d3', '.d4'].forEach(sel => {
+      const d = document.querySelector('.dock-btn' + sel);
+      if (d) d.classList.toggle('tucked', bookMode);
+    });
   }
-  // The ENTIRE sheet is the drag surface — grab anywhere (tab, search bar, white backing) to slide it.
-  // A small movement threshold separates a drag from a tap, and a real drag swallows the trailing
-  // click so dragging across the search bar / CTA never fires them.
-  let csDrag = null, csMoved = false;
-  citysheet.addEventListener('pointerdown', e => {
-    csDrag = { y: e.clientY, ty: cityTY }; csMoved = false;
-    citysheet.style.transition = 'none';
-    try { citysheet.setPointerCapture(e.pointerId); } catch (_) {}
-  });
-  citysheet.addEventListener('pointermove', e => {
-    if (!csDrag) return;
-    const dy = e.clientY - csDrag.y;
-    if (Math.abs(dy) > 4) csMoved = true;
-    let raw = csDrag.ty + dy;
-    if (raw < 0) raw *= 0.3;                                       // rubber-band past the ends → springy
-    else if (raw > CITY_COLLAPSE) raw = CITY_COLLAPSE + (raw - CITY_COLLAPSE) * 0.3;
-    paintCity(raw);
-  });
-  function endCsDrag() {
-    if (!csDrag) return; csDrag = null;
-    const target = cityTY > CITY_COLLAPSE / 2 ? CITY_COLLAPSE : 0;  // snap to nearest detent
-    citysheet.style.transition = 'transform .42s cubic-bezier(.34,1.4,.6,1)';
-    paintCity(target);
-  }
-  citysheet.addEventListener('pointerup', endCsDrag);
-  citysheet.addEventListener('pointercancel', endCsDrag);
-  citysheet.addEventListener('click', e => { if (csMoved) { e.stopPropagation(); e.preventDefault(); csMoved = false; } }, true);
-  csCta.addEventListener('click', () => openSearch());
 
   // This MapLibre build ignores the marker `occludedOpacity` option, so hide trip / plan pins ourselves
   // when they sit on the far side of the globe: anything more than ~84° of arc from the map centre.
@@ -2141,6 +2055,7 @@ return maplibregl$1;
   const MODE_VIEW = { air:3.0, car:5.3, transit:5.7, walk:10.5 };
   document.querySelectorAll('.dock-btn').forEach(b => {
     b.addEventListener('click', () => {
+      if (b.classList.contains('book')) { openFlight('LAX', -118.408, 33.942); return; }  // region CTA → book a flight to LA
       const m = b.dataset.mode;
       if (m === mode) return;                                  // already on this mode — no-op
       document.querySelectorAll('.dock-btn').forEach(x => x.classList.remove('on'));
