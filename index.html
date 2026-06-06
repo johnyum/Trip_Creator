@@ -91,6 +91,8 @@
   .airpin.access { z-index:3; }
   .airpin.access .box { padding:4px 5px; gap:5px; }
   .airpin .box .code { background:rgba(255,255,255,.22); border-radius:5px; padding:2px 5px; font-size:10px; letter-spacing:.5px; }
+  /* access call-outs: plain white text on the green/amber box (no chip), matching the 12px pill type */
+  .airpin.access .box .code { background:none; border-radius:0; padding:0; font-size:12px; font-weight:600; letter-spacing:0; }
   .maplibregl-ctrl-attrib.maplibregl-compact { background:rgba(255,255,255,.6); }
   .maplibregl-canvas, .maplibregl-canvas-container { outline:none; }
   .mk { font-family:var(--cereal); cursor:pointer; z-index:6; }
@@ -354,7 +356,7 @@
   .stay { pointer-events:none; }                  /* purely visual; let the map pan underneath */
   .stay-pop {
     display:inline-flex; align-items:center; background:#fff; color:#222;
-    font:700 13px/1 var(--cereal); padding:7px 11px; border-radius:16px; white-space:nowrap;
+    font:700 12px/1 var(--cereal); padding:7px 11px; border-radius:16px; white-space:nowrap;
     box-shadow:0 4px 12px rgba(0,0,0,.18), 0 1px 3px rgba(0,0,0,.12);
     animation:mkpop .35s cubic-bezier(.22,.9,.3,1.5) both;
   }
@@ -612,9 +614,9 @@ return maplibregl$1;
   }
   function fmtMin(m) {
     const h = Math.floor(m/60), mm = m%60;
-    if (h && mm) return h + ' hr ' + mm + ' min';
-    if (h) return h + ' hr';
-    return mm + ' min';
+    if (h && mm) return h + 'h ' + mm + 'm';
+    if (h) return h + 'h';
+    return mm + 'm';
   }
   // estimated flight time from SF (great-circle distance ÷ cruise speed + overhead)
   function flightMin(lng, lat) {
@@ -690,9 +692,22 @@ return maplibregl$1;
     const m = new maplibregl.Marker({ element: el, anchor: 'bottom', occludedOpacity: 0 }).setLngLat([s.lng, s.lat]).addTo(map);
     return { m, lng: s.lng, lat: s.lat, far: (mode === 'car' && (s.mins||0) > CAR_MAX) };
   }
+  // Grouped cities still carry the same info as a single pill: drive time in car mode (the closest
+  // city in the group), starting price in flights mode.
+  function clusterSuffix(pts) {
+    if (mode === 'car') {
+      const m = Math.min.apply(null, pts.map(s => s.mins || Infinity));
+      return isFinite(m) ? '<span class="mk-time"> · ' + fmtMin(m) + '</span>' : '';
+    }
+    if (mode === 'air') {
+      const pr = Math.min.apply(null, pts.map(s => Number(bestPrice(s.n, s.lng, s.lat)) || Infinity));
+      return isFinite(pr) ? '<span class="mk-time"> · $' + pr + '</span>' : '';
+    }
+    return '';
+  }
   function makeCluster(g) {
     const el = document.createElement('div'); el.className = 'mk mk-clusterwrap';
-    el.innerHTML = '<span class="mk-pill"><span class="mk-pop">' + g.label + '</span></span>';
+    el.innerHTML = '<span class="mk-pill"><span class="mk-pop">' + g.label + clusterSuffix(g.pts) + '</span></span>';
     el.addEventListener('click', () => {
       viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom() });
       const lngs = g.pts.map(s=>s.lng), lats = g.pts.map(s=>s.lat), p = 0.012;
