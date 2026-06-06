@@ -847,11 +847,15 @@ return maplibregl$1;
   }
   function makePoint(s) {
     const el = document.createElement('div'); el.className = 'mk';
+    // Higher-priority places (lower rank) paint over lower-priority neighbours, so e.g. Los Angeles
+    // is never hidden behind nearby San Diego when their pills overlap.
+    el.style.zIndex = String(200 - Math.min(160, Math.round((s.rank || 50) + (s.mz || 0))));
     const t = modeSuffix(s);
     const fly = s.local ? '' : modeChip();
     el.innerHTML = '<span class="mk-pill"><span class="mk-pop">' + fly + s.n + t + '</span></span>';
     el.addEventListener('click', () => {
       if (s.n === 'New York') { enterMetro(); return; }
+      if (s.n === 'Los Angeles' && !s.local) { enterLA(); return; }   // tap LA → fly straight into the Trendy neighbourhoods
       viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom() });
       const z = s.local ? Math.min(map.getZoom() + 2.3, 15) : Math.min(Math.max(map.getZoom() + 2.4, 7.6), 11.5);
       if (s.local) { holdStripDuringMove(); hoodOverview = false; refreshStays(); }   // drilling into a neighbourhood: homes now appear
@@ -875,6 +879,7 @@ return maplibregl$1;
   }
   function makeCluster(g) {
     const el = document.createElement('div'); el.className = 'mk mk-clusterwrap';
+    el.style.zIndex = String(200 - Math.min(160, Math.round(Math.min.apply(null, g.pts.map(p => (p.rank || 50) + (p.mz || 0))))));
     el.innerHTML = '<span class="mk-pill"><span class="mk-pop">' + modeChip() + g.label + clusterSuffix(g.pts) + '</span></span>';
     el.addEventListener('click', () => {
       viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom() });
@@ -1505,6 +1510,24 @@ return maplibregl$1;
     map.easeTo({ center: [-73.96, 40.71], zoom: 9.2, duration: 1000, easing: t => 1 - Math.pow(1 - t, 3), essential: true });
     map.once('moveend', () => layout());
   }
+  // Tapping the Los Angeles pill skips the metro overview and flies straight down into the Trendy
+  // neighbourhoods (Los Feliz / Silver Lake / Echo Park …) with the Trendy card pre-selected.
+  function enterLA() {
+    metro = false;
+    viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom() });
+    localType = 'la'; hoodOverview = true;
+    showLocalCards('la');                                 // LA strip, Trendy first & active
+    const tr = LOCAL_VIBES.la.find(v => v.id === 'trendy') || LOCAL_VIBES.la[0];
+    localVibe = tr.id;
+    currentSpots = tr.spots.map((sp, i) => ({ n:sp[0], lat:sp[1], lng:sp[2], mz:0, rank:i+1, local:true }));
+    clearMarkers(); holdStripDuringMove();
+    const lngs = tr.spots.map(s => s[2]), lats = tr.spots.map(s => s[1]);
+    map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      { padding:{ top:150, bottom:200, left:48, right:48 }, maxZoom: tr.zoom || 12, duration:1400,
+        easing: t => 1 - Math.pow(1 - t, 3), essential:true });
+    map.once('moveend', layout); layout();
+    updateSearchBar();
+  }
 
   const LOCAL_Z = 5.4;
   const ICONP = {
@@ -1543,8 +1566,8 @@ return maplibregl$1;
       {id:'stars',label:'Stargazing',icon:'star',grad:G.d,sat:['Dark Sky Park','Star Mesa','Night Overlook','Observatory','Desert Camp']},
       {id:'trail',label:'Trailheads',icon:'trail',grad:G.f,sat:['Trailhead','Slot Canyon','Rim Trail','Summit Path','Oasis Walk']}],
     la:[
+      {id:'trendy',label:'Trendy',icon:'bar',grad:G.e,zoom:12,spots:[['Echo Park',34.0782,-118.2606],['Silver Lake',34.0900,-118.2700],['Los Feliz',34.1063,-118.2854],['Highland Park',34.1100,-118.1920],['Atwater Village',34.1175,-118.2647]]},
       {id:'hollywood',label:'Hollywood',icon:'star',grad:G.b,zoom:12,spots:[['Hollywood Blvd',34.1016,-118.3267],['Sunset Strip',34.0905,-118.3855],['West Hollywood',34.0900,-118.3617],['Hollywood Hills',34.1248,-118.3320],['Laurel Canyon',34.1099,-118.3815],['Runyon Canyon',34.1119,-118.3490],['Beachwood Canyon',34.1150,-118.3210]]},
-      {id:'trendy',label:'Trendy',icon:'bar',grad:G.e,zoom:11.5,spots:[['Echo Park',34.0782,-118.2606],['Silver Lake',34.0900,-118.2700],['Los Feliz',34.1063,-118.2854],['Highland Park',34.1100,-118.1920],['Abbot Kinney',33.9907,-118.4731]]},
       {id:'coastal',label:'Coastal',icon:'beach',grad:G.f,zoom:11,spots:[['Santa Monica',34.0095,-118.4973],['Venice',33.9850,-118.4695],['Marina del Rey',33.9802,-118.4517],['Manhattan Beach',33.8847,-118.4109],['Malibu',34.0369,-118.6776],['Zuma Beach',34.0165,-118.8210]]},
       {id:'downtown',label:'Downtown',icon:'town',grad:G.a,zoom:13,spots:[['Arts District',34.0407,-118.2330],['Little Tokyo',34.0500,-118.2400],['Fashion District',34.0353,-118.2540],['Historic Core',34.0466,-118.2487],['Chinatown',34.0625,-118.2370],['Financial District',34.0509,-118.2566],['South Park',34.0430,-118.2660]]},
       {id:'glam',label:'Beverly Hills',icon:'gem',grad:G.d,zoom:12.5,spots:[['Rodeo Drive',34.0674,-118.4015],['Trousdale Estates',34.0958,-118.4036],['Bel Air',34.0936,-118.4595],['Holmby Hills',34.0772,-118.4258],['Westwood',34.0635,-118.4455],['Brentwood',34.0520,-118.4730]]}],
