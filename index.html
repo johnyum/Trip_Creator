@@ -348,21 +348,22 @@
   .dock-btn svg { width:20px; height:20px; }
 
   /* City level: the transport dock slides down out of view and a backing sheet rises behind the
-     search bar — a pull tab on top (like the flight sheet) and a full-width "Search flights" box
-     16px under the search bar. */
+     search bar — a draggable pull tab on top (like the flight sheet) and a "Search flights" box.
+     The sheet drags between an open detent (CTA showing) and a collapsed one (just the search bar,
+     ~40px above the bottom); it never dismisses. Transform is driven by JS, not the .up class. */
   .dock-btn.gone { transform:translateY(96px); opacity:0; pointer-events:none;
     transition:transform .42s var(--ease-smooth), opacity .26s ease; }
   .citysheet {
-    position:absolute; left:0; right:0; top:712px; bottom:0; z-index:3;
+    position:absolute; left:0; right:0; top:703px; bottom:0; z-index:3;
     background:#fff; border-radius:26px 26px 0 0; box-shadow:0 -14px 40px rgba(0,0,0,.16);
     transform:translateY(120%); transition:transform .5s var(--ease-smooth);
-    will-change:transform; pointer-events:none;
+    will-change:transform;
   }
-  .citysheet.up { transform:translateY(0); pointer-events:auto; }
+  .cs-head { position:absolute; top:0; left:0; right:0; height:27px; touch-action:none; cursor:grab; z-index:2; }
   .cs-grip { position:absolute; top:10px; left:50%; transform:translateX(-50%);
     width:38px; height:5px; border-radius:3px; background:#dcdcdc; }
   .cs-cta {
-    position:absolute; top:90px; left:24px; right:24px; height:52px; box-sizing:border-box;
+    position:absolute; top:99px; left:24px; right:24px; height:52px; box-sizing:border-box;
     display:flex; align-items:center; justify-content:center; gap:9px;
     border:1px solid #ececec; border-radius:18px; background:#fff; box-shadow:0 3px 12px rgba(0,0,0,.08);
     cursor:pointer; font:600 15px/1 var(--cereal); color:#222;
@@ -605,7 +606,7 @@
 </svg></div>
 
     <div class="citysheet" id="citysheet">
-      <div class="cs-grip"></div>
+      <div class="cs-head" id="csHead"><div class="cs-grip"></div></div>
       <button class="cs-cta" id="csCta">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
         Search flights
@@ -803,6 +804,12 @@ return maplibregl$1;
       const p = map.project([s.lng, s.lat]);
       if (p.x < -40 || p.x > W + 40 || p.y < -40 || p.y > H + 40) continue;   // off-screen
       cand.push(s);
+    }
+    // At wide zooms Los Angeles stands in for the SoCal cluster — keep San Diego from crowding/covering
+    // it. San Diego returns once you've zoomed in toward it.
+    if (map.getZoom() < 7 && cand.some(s => s.n === 'Los Angeles')) {
+      const i = cand.findIndex(s => s.n === 'San Diego');
+      if (i >= 0) cand.splice(i, 1);
     }
     // Always keep the marquee world icons; fill the rest by tier then prominence.
     const world = cand.filter(s => (s.mz || 0) <= 0.01);
@@ -1429,15 +1436,63 @@ return maplibregl$1;
     if (stripShown && Math.abs(map.getZoom() - _zSettled) > 0.35) hideStrip();
   });
 
-  // City-level chrome: at a recognised place (and not mid-flight-sheet) the transport dock slides
-  // away and the backing sheet with its "Search flights" box rises behind the search bar.
+  // City-level chrome: dock slides away and a backing sheet rises behind the search bar. The sheet
+  // drags between an open detent (Search-flights box showing) and a collapsed one (just the search
+  // bar, ~40px above the bottom). It never swipes away — it stays until you back out or go forward.
   const citysheet = document.getElementById('citysheet');
+  const csHead = document.getElementById('csHead');
+  const csCta = document.getElementById('csCta');
+  const CITY_COLLAPSE = 48;                 // open → collapsed drag distance (search bar drops to ~40px above bottom)
+  let cityTY = 0, cityUp = false;
+  function paintCity(ty) {
+    cityTY = ty;
+    citysheet.style.transform = 'translateY(' + ty + 'px)';
+    pillEl.style.transform = 'translateY(' + ty + 'px)';
+    csCta.style.opacity = String(Math.max(0, 1 - ty / 30));
+  }
+  function showCitySheet() {
+    cityUp = true;
+    citysheet.style.transition = 'transform .5s var(--ease-smooth)';
+    pillEl.style.transition = 'transform .5s var(--ease-smooth)';
+    paintCity(0);
+  }
+  function hideCitySheet() {
+    cityUp = false;
+    citysheet.style.transition = 'transform .42s var(--ease-smooth)';
+    pillEl.style.transition = 'transform .42s var(--ease-smooth)';
+    citysheet.style.transform = 'translateY(120%)';
+    pillEl.style.transform = 'translateY(0)';
+    cityTY = 0;
+  }
   function syncChrome() {
     const city = (!!localType || region) && !flightMode;
     document.querySelectorAll('.dock-btn').forEach(d => d.classList.toggle('gone', city));
-    citysheet.classList.toggle('up', city);
+    if (city && !cityUp) showCitySheet();
+    else if (!city && cityUp) hideCitySheet();
   }
-  document.getElementById('csCta').addEventListener('click', () => openSearch());
+  let csDrag = null;
+  csHead.addEventListener('pointerdown', e => {
+    csDrag = { y: e.clientY, ty: cityTY };
+    citysheet.style.transition = 'none'; pillEl.style.transition = 'none';
+    try { csHead.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  csHead.addEventListener('pointermove', e => {
+    if (!csDrag) return;
+    let raw = csDrag.ty + (e.clientY - csDrag.y);
+    if (raw < 0) raw *= 0.3;                                       // rubber-band past the ends → springy
+    else if (raw > CITY_COLLAPSE) raw = CITY_COLLAPSE + (raw - CITY_COLLAPSE) * 0.3;
+    paintCity(raw);
+  });
+  function endCsDrag() {
+    if (!csDrag) return; csDrag = null;
+    const target = cityTY > CITY_COLLAPSE / 2 ? CITY_COLLAPSE : 0;  // snap to nearest detent
+    const spring = 'transform .42s cubic-bezier(.34,1.4,.6,1)';
+    citysheet.style.transition = spring; pillEl.style.transition = spring;
+    paintCity(target);
+  }
+  csHead.addEventListener('pointerup', endCsDrag);
+  csHead.addEventListener('pointercancel', endCsDrag);
+  csCta.addEventListener('click', () => openSearch());
 
   // This MapLibre build ignores the marker `occludedOpacity` option, so hide trip / plan pins ourselves
   // when they sit on the far side of the globe: anything more than ~84° of arc from the map centre.
