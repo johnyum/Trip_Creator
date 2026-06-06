@@ -82,15 +82,15 @@
   /* airport pill */
   .airpin { transform:translateY(-50%); z-index:5; }
   .airpin .box {
-    display:inline-flex; align-items:center; gap:7px; background:var(--pin, #4990EF); color:#fff;
-    font:600 12px/1 var(--cereal); padding:8px 10px; border-radius:11px;
+    display:inline-flex; align-items:center; gap:5px; background:var(--pin, #4990EF); color:#fff;
+    font:600 12px/1 var(--cereal); padding:4px 5px; border-radius:11px;
     box-shadow:0 5px 14px rgba(18,28,54,.32), 0 1px 3px rgba(0,0,0,.3);
   }
   .airpin .box svg { width:15px; height:15px; }
   /* gas / transit access call-outs: tighter padding, and they sit BEHIND city pills */
   .airpin.access { z-index:3; }
   .airpin.access .box { padding:4px 5px; gap:5px; }
-  .airpin .box .code { background:rgba(255,255,255,.22); border-radius:5px; padding:2px 5px; font-size:10px; letter-spacing:.5px; }
+  .airpin .box .code { background:none; border-radius:0; padding:0; font-size:12px; font-weight:600; letter-spacing:0; }
   /* access call-outs: plain white text on the green/amber box (no chip), matching the 12px pill type */
   .airpin.access .box .code { background:none; border-radius:0; padding:0; font-size:12px; font-weight:600; letter-spacing:0; }
   /* EV supercharger: a perfect circle with a single large lightning bolt, no label */
@@ -388,13 +388,14 @@
      their place. Same height as the mode circles. Toggled via .region-cta / .show in syncChrome. */
   .dock.region-cta .dock-btn { display:none; }
   .dock-pill {
-    display:none; pointer-events:auto; align-items:center; justify-content:center; height:40px; padding:0 20px;
-    border-radius:22px; cursor:pointer; white-space:nowrap; color:var(--ink); font:600 14px/1 var(--cereal);
-    background:var(--glass-bg); -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
-    border:0.5px solid var(--glass-border); box-shadow:var(--glass-shadow), var(--glass-sheen);
+    display:none; pointer-events:auto; align-items:center; justify-content:center;
+    flex:1 1 auto; margin:0 24px; height:48px; padding:0 18px;
+    border-radius:12px; cursor:pointer; white-space:nowrap; color:#fff; font:600 15px/1 var(--cereal);
+    background:#166BD8; border:0;
+    box-shadow:0 6px 16px rgba(22,107,216,.34), inset 0 1px 0 rgba(255,255,255,.20);
     transition:transform .14s var(--ease-out);
   }
-  .dock-pill.show { display:inline-flex; }
+  .dock-pill.show { display:flex; }
   .dock-pill:active { transform:scale(.96); }
   .dock-pill svg { width:18px; height:18px; }
 
@@ -1823,6 +1824,7 @@ return maplibregl$1;
   // changing zoom; the city-core pin (named after the city) drills into its neighbourhoods.
   const REGION_LA = [
     {id:'iconic',label:'Iconic',icon:'star',grad:G.e,img:'la_iconic',spots:[
+      ['Los Angeles',34.0522,-118.2437],
       ['Pasadena',34.1478,-118.1445],['Santa Clarita',34.3917,-118.5426],
       ['Malibu',34.0259,-118.7798],['Laguna Beach',33.5427,-117.7854],
       ['Santa Barbara',34.4208,-119.6982]]},
@@ -1833,10 +1835,10 @@ return maplibregl$1;
       ['Olvera Street',34.0573,-118.2376],['Old Town Pasadena',34.1455,-118.1506],
       ['Mission San Gabriel',34.0972,-118.1059],['Queen Mary',33.7530,-118.1903],
       ['San Juan Capistrano',33.5017,-117.6628]]},
-    {id:'bohemian',label:'Bohemian',icon:'trail',grad:G.c,img:'la_bohemian',spots:[
-      ['Topanga Canyon',34.0936,-118.6009],['Laurel Canyon',34.1099,-118.3815],
-      ['Mt Washington',34.0889,-118.2150],['Altadena',34.1897,-118.1312],
-      ['Laguna Beach',33.5427,-117.7854]]}
+    {id:'bohemian',label:'Architecture',icon:'trail',grad:G.c,img:'la_bohemian',spots:[
+      ['Silver Lake',34.0869,-118.2702],['Hollywood Hills',34.1262,-118.3245],
+      ['Los Feliz',34.1069,-118.2861],['Venice',33.9908,-118.4655],
+      ['Pacific Palisades',34.0436,-118.5253]]}
   ];
   const REGION_NYC = [
     {id:'iconic',label:'Iconic',icon:'star',grad:G.e,spots:[
@@ -1850,7 +1852,7 @@ return maplibregl$1;
     {id:'arts',label:'Arts & Culture',icon:'gem',grad:G.d,spots:[
       ['The Met',40.7794,-73.9632],['MoMA',40.7614,-73.9776],['Broadway',40.7590,-73.9845],
       ['Guggenheim',40.7830,-73.9590],['Lincoln Center',40.7725,-73.9835]]},
-    {id:'bohemian',label:'Bohemian',icon:'trail',grad:G.c,spots:[
+    {id:'bohemian',label:'Architecture',icon:'trail',grad:G.c,spots:[
       ['Williamsburg',40.7081,-73.9571],['Bushwick',40.6958,-73.9171],
       ['Greenwich Village',40.7336,-74.0027],['DUMBO',40.7033,-73.9881],
       ['Astoria',40.7644,-73.9235]]}
@@ -1865,7 +1867,7 @@ return maplibregl$1;
     {id:'foodie',label:'Foodie',icon:'food',grad:G.b,spots:[
       ['Le Marais',48.8590,2.3580],['Rue Cler',48.8556,2.3060],['Canal Saint-Martin',48.8709,2.3674],
       ['Montorgueil',48.8645,2.3470],['Rue Mouffetard',48.8418,2.3494]]},
-    {id:'bohemian',label:'Bohemian',icon:'trail',grad:G.c,spots:[
+    {id:'bohemian',label:'Architecture',icon:'trail',grad:G.c,spots:[
       ['Montmartre',48.8867,2.3431],['Belleville',48.8721,2.3776],['Le Marais',48.8590,2.3580],
       ['Latin Quarter',48.8499,2.3470],['Canal Saint-Martin',48.8709,2.3674]]}
   ];
