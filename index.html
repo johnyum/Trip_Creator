@@ -812,12 +812,19 @@ return maplibregl$1;
     if (mode === 'walk')    return '<span class="mk-walk">' + WALK_CHIP + '</span>';
     return '<span class="mk-fly">' + AIR_CHIP + '</span>';
   }
+  // Travel-time estimate from the SF origin for non-flight modes (great-circle km ÷ avg speed).
+  function travelMin(s, kmh, add) { return Math.round((angDist(SF[0], SF[1], s.lng, s.lat) * 111) / kmh * 60) + (add || 0); }
+  function modeSuffix(s) {
+    if (s.local) return '';
+    if (mode === 'air')     return '<span class="mk-time"> · $' + bestPrice(s.n, s.lng, s.lat) + '</span>';
+    if (mode === 'car')     { const m = travelMin(s, 85);     return m <= 1080 ? '<span class="mk-time"> · ' + fmtMin(m) + '</span>' : ''; }
+    if (mode === 'transit') { const m = travelMin(s, 72, 40); return m <= 1080 ? '<span class="mk-time"> · ' + fmtMin(m) + '</span>' : ''; }
+    if (mode === 'walk')    { const m = travelMin(s, 4.8);    return m <= 300  ? '<span class="mk-time"> · ' + fmtMin(m) + '</span>' : ''; }
+    return '';
+  }
   function makePoint(s) {
     const el = document.createElement('div'); el.className = 'mk';
-    const t = s.local ? ''
-            : (mode === 'car' && s.mins) ? '<span class="mk-time"> · ' + fmtMin(s.mins) + '</span>'
-            : (mode === 'air') ? '<span class="mk-time"> · $' + bestPrice(s.n, s.lng, s.lat) + '</span>'
-            : '';
+    const t = modeSuffix(s);
     const fly = s.local ? '' : modeChip();
     el.innerHTML = '<span class="mk-pill"><span class="mk-pop">' + fly + s.n + t + '</span></span>';
     el.addEventListener('click', () => {
@@ -827,20 +834,19 @@ return maplibregl$1;
       map.easeTo({ center: [s.lng, s.lat], zoom: z, duration: 850, essential: true });
     });
     const m = new maplibregl.Marker({ element: el, anchor: 'bottom', occludedOpacity: 0 }).setLngLat([s.lng, s.lat]).addTo(map);
-    return { m, lng: s.lng, lat: s.lat, far: (mode === 'car' && (s.mins||0) > CAR_MAX) };
+    return { m, lng: s.lng, lat: s.lat, far: false };
   }
-  // Grouped cities still carry the same info as a single pill: drive time in car mode (the closest
-  // city in the group), starting price in flights mode.
+  // Grouped cities carry the same info as a single pill: starting price in flights, the nearest
+  // member's travel time otherwise.
   function clusterSuffix(pts) {
-    if (mode === 'car') {
-      const m = Math.min.apply(null, pts.map(s => s.mins || Infinity));
-      return isFinite(m) ? '<span class="mk-time"> · ' + fmtMin(m) + '</span>' : '';
-    }
     if (mode === 'air') {
       const pr = Math.min.apply(null, pts.map(s => Number(bestPrice(s.n, s.lng, s.lat)) || Infinity));
       return isFinite(pr) ? '<span class="mk-time"> · $' + pr + '</span>' : '';
     }
-    return '';
+    const kmh = mode === 'walk' ? 4.8 : (mode === 'transit' ? 72 : 85), cap = mode === 'walk' ? 300 : 1080;
+    let best = Infinity;
+    pts.forEach(s => { const m = travelMin(s, kmh, mode === 'transit' ? 40 : 0); if (m < best) best = m; });
+    return best <= cap ? '<span class="mk-time"> · ' + fmtMin(best) + '</span>' : '';
   }
   function makeCluster(g) {
     const el = document.createElement('div'); el.className = 'mk mk-clusterwrap';
@@ -1354,33 +1360,9 @@ return maplibregl$1;
 
   function render(instant) {
     if (!activeVibe || !VIBES[activeVibe]) return;
-    currentSpots = (mode === 'air') ? airSpots(activeVibe) : (VIBES[activeVibe][mode] || []);
-    // explore (flights) is zoom/locale-driven: keep the current camera and just re-pick the
-    // POIs that belong to this view. The incremental layout swaps the old vibe's pins for the new.
-    if (mode === 'air') { layout(); return; }
-    clearMarkers();
-    if (!currentSpots.length) return;
-    const isCar = mode === 'car';
-
-    // car mode frames the ~9 hr radius (near cities + the SF origin); other modes fit everything
-    let pts;
-    if (isCar) {
-      const near = currentSpots.filter(s => (s.mins||0) <= CAR_MAX);
-      pts = (near.length ? near : currentSpots).map(s => [s.lng, s.lat]);
-      pts.push(SF);
-    } else {
-      pts = currentSpots.map(s => [s.lng, s.lat]);
-    }
-    const b = [
-      [Math.min(...pts.map(p=>p[0])), Math.min(...pts.map(p=>p[1]))],
-      [Math.max(...pts.map(p=>p[0])), Math.max(...pts.map(p=>p[1]))]
-    ];
-    const pad = { top:150, bottom:176, left:46, right:46 };
-    if (isCar) {
-      const cam = map.cameraForBounds(b, { padding: pad, maxZoom: 12 });
-      carBaseZoom = cam ? cam.zoom : 7;
-    }
-    map.fitBounds(b, { padding: pad, maxZoom: isCar ? 12 : 14.5, duration: instant ? 0 : 1300 });
+    // Every mode now shares the tiered destination set, so zooming reveals world → continental →
+    // local spots identically to flights. The mode only changes each pill's chip + suffix.
+    currentSpots = airSpots(activeVibe);
     layout();
   }
 
@@ -1388,7 +1370,6 @@ return maplibregl$1;
   // spots in roughly the region you're already looking at, so the pills spread out and fill the space.
   // It never snaps back to the avatar/home — only tapping the avatar does that.
   function frameVibe() {
-    if (mode !== 'air') return;
     const c = map.getCenter();
     const region = airSpots(activeVibe).filter(s => (s.mz||0) > 0.01);   // skip the omnipresent world icons
     let use = region.filter(s => angDist(c.lng, c.lat, s.lng, s.lat) < 36);
