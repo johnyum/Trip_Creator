@@ -93,6 +93,38 @@
   .airpin .box .code { background:rgba(255,255,255,.22); border-radius:5px; padding:2px 5px; font-size:10px; letter-spacing:.5px; }
   /* access call-outs: plain white text on the green/amber box (no chip), matching the 12px pill type */
   .airpin.access .box .code { background:none; border-radius:0; padding:0; font-size:12px; font-weight:600; letter-spacing:0; }
+  /* EV supercharger: a perfect circle with a single large lightning bolt, no label */
+  .airpin.evdot { z-index:3; }
+  .airpin.evdot .evcircle {
+    width:32px; height:32px; border-radius:50%; box-sizing:border-box;
+    display:flex; align-items:center; justify-content:center;
+    background:#1577d6; color:#fff;
+    box-shadow:0 5px 14px rgba(21,119,214,.45), 0 1px 3px rgba(0,0,0,.3);
+  }
+  .airpin.evdot .evcircle svg { width:20px; height:20px; display:block; }
+  /* keepsake trip card — pops in above a tapped red pin */
+  .keepsake {
+    position:absolute; z-index:50; width:220px;
+    transform:translate(-50%,-100%) scale(.82); transform-origin:50% 100%;
+    opacity:0; pointer-events:none;
+    transition:transform .26s cubic-bezier(.2,.9,.3,1.35), opacity .2s ease;
+  }
+  .keepsake.show { opacity:1; transform:translate(-50%,-100%) scale(1); pointer-events:auto; }
+  .keepsake .kk-card {
+    position:relative; background:#fff; border-radius:24px; overflow:hidden;
+    box-shadow:0 18px 40px -8px rgba(0,0,0,.34), 0 4px 12px rgba(0,0,0,.16);
+    font-family:var(--cereal);
+  }
+  .keepsake .kk-photo { height:158px; background:linear-gradient(135deg,#e9eef3,#d3dbe4); background-size:cover; background-position:center; }
+  .keepsake .kk-close {
+    position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%;
+    border:none; cursor:pointer; background:rgba(255,255,255,.92); color:#222;
+    box-shadow:0 2px 6px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .keepsake .kk-close svg { width:12px; height:12px; display:block; }
+  .keepsake .kk-body { padding:14px 18px 18px; }
+  .keepsake .kk-city { font-size:17px; font-weight:700; color:#222; letter-spacing:-.2px; }
+  .keepsake .kk-date { margin-top:3px; font-size:13px; font-weight:400; color:#717171; }
   .maplibregl-ctrl-attrib.maplibregl-compact { background:rgba(255,255,255,.6); }
   .maplibregl-canvas, .maplibregl-canvas-container { outline:none; }
   .mk { font-family:var(--cereal); cursor:pointer; z-index:6; }
@@ -1175,8 +1207,74 @@ return maplibregl$1;
       '</svg>';
     return el;
   }
+  // ---- keepsake card: tap a red pin to reveal a photo + city + dates ----
+  // date strings are my best read of the trips so far; the master list will make them authoritative.
+  // photo: null for now — swapped to a data-URI per city once the photo zip arrives.
+  const TRIP_INFO = {
+    'Los Angeles':{date:'Apr 23–25, 2026 · 4 stays'}, 'San Francisco':{date:'Jan 10, 2026 · 2 stays'},
+    'Busan':{date:'Nov 19–26, 2016'}, 'Seoul':{date:'Nov 23–26, 2016'}, 'Kyoto':{date:'Nov 15–18, 2016'},
+    'Venice':{date:'Aug 5–9, 2016'}, 'Boston':{date:'Feb 18–21, 2016'},
+    'Tahoe City':{date:'May 22–25, 2026 · 3 stays'}, 'Jordan Valley':{date:'Sep 5–7, 2024 · 3 stays'},
+    'Montreal':{date:'Oct 16–20, 2017'}, 'Portland':{date:'Apr 25–28, 2017'}, 'Austin':{date:'2017'},
+    'Bodega Bay':{date:'May 4–6, 2018'}, 'Cazadero':{date:'Feb 16–19, 2018'}, 'Miami Beach':{date:'2018'},
+    'Bondi Beach':{date:'Aug 6–11, 2019'}, 'Chicago':{date:'Jun 23 – Jul 3, 2019'}, 'Zürich':{date:'Jun 19–23, 2019'},
+    'Truckee':{date:'Jul 10–14, 2024 · 2 stays'}, 'Healdsburg':{date:'Apr 5–7, 2019'}, 'Brooklyn':{date:'Feb 8–11, 2019'},
+    'Mexico City':{date:'Jan 25–30, 2019'}, 'Lake Charles':{date:'Jan 18–20, 2019'},
+    'Marina del Rey':{date:'Oct 10–18, 2020'}, 'St. George':{date:'Sep 16–21, 2020'}, 'Williams':{date:'Sep 14–16, 2020'},
+    'Pahrump':{date:'Sep 9–12, 2020'}, 'Joshua Tree':{date:'Jul 21–24, 2020'}, 'Palm Springs':{date:'Nov 6–9, 2023 · 4 stays'},
+    'Miami':{date:'Nov 29 – Dec 5, 2021 · 2 stays'}, 'Soquel':{date:'Feb 19–21, 2021'}, 'Hội An':{date:'Oct 29, 2022'},
+    'Orange County':{date:'Oct 11–14, 2022'}, 'Washington':{date:'Jul 22–24, 2022'}, 'Guerneville':{date:'Apr 18–21, 2022'},
+    'La Quinta':{date:'May 25–30, 2023 · 2 stays'}, 'Paso Robles':{date:'May 5–6, 2026 · 2 stays'}, 'Kansas City':{date:'Sep 8–10, 2023'},
+    'Lisbon':{date:'Jun 24–29, 2023'}, 'Sea Ranch':{date:'Apr 16–19, 2026 · 2 stays'}, 'Cologne':{date:'Oct 14–16, 2025'},
+    'Tbilisi':{date:'Aug 10–18, 2025'}
+  };
+  const kkEl = document.createElement('div'); kkEl.className = 'keepsake'; kkEl.style.display = 'none';
+  kkEl.innerHTML =
+    '<div class="kk-card">' +
+      '<button class="kk-close" aria-label="Close"><svg viewBox="0 0 12 12"><path d="M1 1l10 10M11 1L1 11" stroke="#222" stroke-width="1.6" stroke-linecap="round"/></svg></button>' +
+      '<div class="kk-photo"></div>' +
+      '<div class="kk-body"><div class="kk-city"></div><div class="kk-date"></div></div>' +
+    '</div>';
+  map.getContainer().appendChild(kkEl);
+  const kkPhoto = kkEl.querySelector('.kk-photo');
+  const kkCity  = kkEl.querySelector('.kk-city');
+  const kkDate  = kkEl.querySelector('.kk-date');
+  let kkAnchor = null, kkHideTimer = null;
+  function positionKeepsake() {
+    if (!kkAnchor) return;
+    const p = map.project([kkAnchor.lng, kkAnchor.lat]);
+    const W = map.getContainer().clientWidth;
+    kkEl.style.left = Math.max(116, Math.min(W - 116, p.x)) + 'px';
+    kkEl.style.top  = (p.y - 36) + 'px';            // sit just above the pin head
+  }
+  function openKeepsake(name, lng, lat) {
+    const info = TRIP_INFO[name] || {};
+    kkCity.textContent = name;
+    kkDate.textContent = info.date || '';
+    kkDate.style.display = info.date ? '' : 'none';
+    kkPhoto.style.backgroundImage = info.photo ? ('url("' + info.photo + '")') : '';
+    kkAnchor = { lng, lat };
+    clearTimeout(kkHideTimer);
+    kkEl.style.display = '';
+    positionKeepsake();
+    requestAnimationFrame(() => kkEl.classList.add('show'));
+  }
+  function closeKeepsake() {
+    if (!kkAnchor) return;
+    kkEl.classList.remove('show');
+    kkAnchor = null;
+    kkHideTimer = setTimeout(() => { kkEl.style.display = 'none'; }, 280);
+  }
+  kkEl.querySelector('.kk-close').addEventListener('click', (e) => { e.stopPropagation(); closeKeepsake(); });
+  kkEl.addEventListener('click', (e) => e.stopPropagation());
+  map.on('move', positionKeepsake);
+  map.on('click', closeKeepsake);
+
   TRIP_CITIES.forEach(([n, lat, lng], i) => {
-    const m = new maplibregl.Marker({ element: tripPinEl(i, n), anchor: 'bottom', occludedOpacity: 0 }).setLngLat([lng, lat]).addTo(map);
+    const el = tripPinEl(i, n);
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', (ev) => { ev.stopPropagation(); openKeepsake(n, lng, lat); });
+    const m = new maplibregl.Marker({ element: el, anchor: 'bottom', occludedOpacity: 0 }).setLngLat([lng, lat]).addTo(map);
     tripMarkers.push(m);
   });
   occludeFarPins();
@@ -1284,23 +1382,28 @@ return maplibregl$1;
       (label ? '<span class="code">' + label + '</span>' : '') + '</div>';
     return e;
   }
+  // EV supercharger pin: a plain circle with a big lightning bolt — no kW label
+  function evPinEl() {
+    const e = document.createElement('div'); e.className = 'airpin evdot';
+    e.innerHTML = '<div class="evcircle">' + EV_ICON + '</div>';
+    return e;
+  }
   // [city, lat, lng, $/gal] — representative June-2026 regional prices (grounded in AAA state averages;
   // West Coast elevated, coastal/urban higher than inland). Mock values for the prototype, not live.
   const GAS = [
-    ['San Diego',32.72,-117.16,5.55],
-    ['Fresno',36.74,-119.77,5.39],['Bakersfield',35.37,-119.02,5.29],
-    ['Santa Barbara',34.42,-119.70,5.79],['Monterey',36.60,-121.89,5.69],['Eureka',40.80,-124.16,5.65],
-    ['Redding',40.59,-122.39,5.35],
-    ['Phoenix',33.45,-112.07,4.39],['Seattle',47.61,-122.33,5.49],
-    ['Salt Lake City',40.76,-111.89,4.15],['Denver',39.74,-104.99,3.95],['Boise',43.62,-116.21,4.29],
-    ['Medford',42.33,-122.87,4.95],['Bend',44.06,-121.31,4.99],['San Luis Obispo',35.28,-120.66,5.72]
+    ['Auburn',38.90,-121.08,5.19],            // SF → Tahoe (I-80 foothills)
+    ['Santa Rosa',38.44,-122.71,5.25],        // SF → wine country / north coast
+    ['Monterey',36.60,-121.89,5.69],          // SF → Big Sur
+    ['San Luis Obispo',35.28,-120.66,5.72],   // mid coast → LA
+    ['Santa Barbara',34.42,-119.70,5.79],     // coast → LA
+    ['Fresno',36.74,-119.77,5.39],            // SF → southern Sierra
+    ['Redding',40.59,-122.39,5.35]            // SF → far north / Oregon
   ];
   // [city, lat, lng, peak kW] — DC fast-charge hubs. EVs charge by power (kW), not by the gallon:
   // ~150 kW ≈ 30 min to 80%, 250–350 kW ≈ 15–20 min. (Cost is per-kWh and varies, so we show speed.)
   const EV = [
-    ['SF',37.77,-122.42,250],['LA',34.05,-118.24,350],['Sacramento',38.58,-121.49,150],
-    ['Reno',39.53,-119.81,250],['Las Vegas',36.17,-115.14,350],['Portland',45.52,-122.68,150],
-    ['Kettleman City',36.01,-119.96,250],['Barstow',34.90,-117.02,350]
+    ['SF',37.77,-122.42],['LA',34.05,-118.24],['Sacramento',38.58,-121.49],
+    ['Kettleman City',36.01,-119.96],['Reno',39.53,-119.81]
   ];
   // [station, lat, lng] — real rail stations, Europe-heavy
   const TRAINS = [
@@ -1321,7 +1424,7 @@ return maplibregl$1;
     });
   }
   const gasMarkers   = buildPool(GAS,    r => accessPinEl(GAS_ICON,   '$' + r[3].toFixed(2), '#2e9e54'));
-  const evMarkers    = buildPool(EV,     r => accessPinEl(EV_ICON,    r[3] + ' kW',          '#1577d6'));
+  const evMarkers    = buildPool(EV,     r => evPinEl());
   const trainMarkers = buildPool(TRAINS, r => accessPinEl(TRAIN_ICON, r[0],                 '#ef8a17'));
   function showPool(markers, active, zMin, rng, max) {
     if (!active) { for (const m of markers) m.getElement().style.display = 'none'; return; }
@@ -1337,8 +1440,8 @@ return maplibregl$1;
     inRange.forEach((o, i) => { o.m.getElement().style.display = (!max || i < max) ? '' : 'none'; });
   }
   function refreshAccess() {
-    showPool(gasMarkers,   mode === 'car'     && !flightMode, 4.0, 14, 4);
-    showPool(evMarkers,    mode === 'car'     && !flightMode, 4.0, 14, 4);
+    showPool(gasMarkers,   mode === 'car'     && !flightMode, 4.0, 14, 3);
+    showPool(evMarkers,    mode === 'car'     && !flightMode, 4.0, 14, 3);
     showPool(trainMarkers, mode === 'transit' && !flightMode, 3.5, 22);
   }
 
