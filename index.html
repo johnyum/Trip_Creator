@@ -77,7 +77,7 @@
   }
   .maplibregl-ctrl-attrib { font-size:9px; }
   /* visited trip pin — SVG teardrop; tip sits exactly on the coordinate, highlight is dynamic */
-  .trippin { cursor:default; filter:drop-shadow(0 4px 5px rgba(0,0,0,.34)); }
+  .trippin { cursor:default; filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.3)); }
   .trippin svg { display:block; }
   /* airport pill */
   .airpin { transform:translateY(-50%); z-index:5; }
@@ -198,6 +198,49 @@
   .pill-mid { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
   .pill-t1 { font:var(--t-title); color:var(--ink); white-space:nowrap; }
   .pill-t2 { font:var(--t-caption); color:#717171; white-space:nowrap; margin-top:2px; }
+  .pill-mid { cursor:pointer; }
+
+  /* ---- open-field trip planner ---- */
+  .psheet { position:absolute; inset:0; z-index:70; display:none; }
+  .psheet.open { display:block; }
+  #psheetScrim { position:absolute; inset:0; background:rgba(18,18,20,.30); }
+  .psheet-card { position:absolute; left:12px; right:12px; bottom:12px; padding:16px 16px 14px;
+    background:var(--glass-bg); -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+    border:0.5px solid var(--glass-border); box-shadow:var(--glass-shadow), var(--glass-sheen); border-radius:26px; }
+  .psheet-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:11px; }
+  .psheet-top h3 { margin:0; font:600 16px/1 -apple-system,system-ui,sans-serif; color:var(--ink); }
+  #pclose { width:28px; height:28px; border:none; border-radius:50%; background:rgba(0,0,0,.06); color:var(--ink); font-size:17px; line-height:1; cursor:pointer; }
+  #pq { width:100%; box-sizing:border-box; min-height:76px; resize:none; border:none; outline:none; border-radius:16px;
+    background:rgba(255,255,255,.72); padding:12px 14px; font:400 15px/1.42 -apple-system,system-ui,sans-serif; color:var(--ink); }
+  #pq::placeholder { color:#9aa0a6; }
+  .pchips { display:flex; gap:8px; overflow-x:auto; margin:10px 0 12px; scrollbar-width:none; }
+  .pchips::-webkit-scrollbar { display:none; }
+  .pchip { flex:0 0 auto; white-space:nowrap; padding:7px 12px; border-radius:999px; border:1px solid rgba(0,0,0,.10);
+    background:rgba(255,255,255,.58); font:400 13px/1 -apple-system,system-ui,sans-serif; color:#444; cursor:pointer; }
+  .pgo { width:100%; height:48px; border:none; border-radius:16px; background:#FF385C; color:#fff;
+    font:600 15px/1 -apple-system,system-ui,sans-serif; cursor:pointer; transition:filter .15s; }
+  .pgo:disabled { filter:saturate(.4) opacity(.7); cursor:default; }
+  .pstatus { min-height:15px; margin-top:9px; text-align:center; font:400 13px/1.3 -apple-system,system-ui,sans-serif; }
+  .pstatus.busy { color:#666; }
+  .pstatus.err { color:#c0223e; }
+
+  /* itinerary result card */
+  .pitin { position:absolute; left:12px; right:12px; bottom:170px; z-index:55; display:none; max-height:42%;
+    flex-direction:column; padding:14px 14px 6px; overflow:hidden;
+    background:var(--glass-bg); -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+    border:0.5px solid var(--glass-border); box-shadow:var(--glass-shadow), var(--glass-sheen); border-radius:24px; }
+  .pitin.open { display:flex; }
+  .pit-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .pit-title { font:600 16px/1.15 -apple-system,system-ui,sans-serif; color:var(--ink); }
+  .pit-sum { margin-top:3px; font:400 12.5px/1.35 -apple-system,system-ui,sans-serif; color:#666; }
+  .pit-x { flex:0 0 auto; width:26px; height:26px; border:none; border-radius:50%; background:rgba(0,0,0,.06); color:var(--ink); font-size:16px; line-height:1; cursor:pointer; }
+  .pit-list { margin-top:10px; overflow-y:auto; padding-bottom:8px; }
+  .pit-row { display:flex; gap:11px; align-items:flex-start; padding:9px 4px; border-top:1px solid rgba(0,0,0,.07); cursor:pointer; }
+  .pit-row:first-child { border-top:none; }
+  .pit-n { flex:0 0 auto; width:22px; height:22px; border-radius:50%; background:#FF385C; color:#fff;
+    font:600 12px/22px -apple-system,system-ui,sans-serif; text-align:center; }
+  .pit-name { font:500 14px/1.2 -apple-system,system-ui,sans-serif; color:var(--ink); }
+  .pit-why { margin-top:2px; font:400 12px/1.35 -apple-system,system-ui,sans-serif; color:#777; }
 
   /* Dock */
   .dock-btn {
@@ -355,6 +398,22 @@
         <span class="eq"><i></i><i></i><i></i><i></i><i></i></span>
       </button>
     </div>
+
+    <div class="psheet" id="psheet">
+      <div id="psheetScrim"></div>
+      <div class="psheet-card">
+        <div class="psheet-top"><h3>Plan a trip</h3><button id="pclose" aria-label="close">&times;</button></div>
+        <textarea id="pq" placeholder="Describe your trip — e.g. a week road-tripping up the North Bay coast with my family"></textarea>
+        <div class="pchips">
+          <button class="pchip">Road trip up the North Bay coast with my family</button>
+          <button class="pchip">1 month across 4 Asian cities for the best food</button>
+          <button class="pchip">Long weekend in the Pacific Northwest</button>
+        </div>
+        <button class="pgo" id="pgo">Plan trip</button>
+        <div class="pstatus" id="pstatus"></div>
+      </div>
+    </div>
+    <div class="pitin" id="pitin"></div>
 
     <div class="dock-btn d1 on" data-mode="air"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0_3512_312941)">
@@ -840,8 +899,10 @@ return maplibregl$1;
             '<stop offset="0%" stop-color="#8a9095"/><stop offset="42%" stop-color="#eef1f3"/><stop offset="100%" stop-color="#767c81"/>' +
           '</linearGradient>' +
         '</defs>' +
-        '<ellipse cx="16" cy="42.6" rx="4.2" ry="1.4" fill="rgba(0,0,0,.24)"/>' +              // contact shadow on the map
-        '<path d="M14.7 20.5 L16 43 L17.3 20.5 Z" fill="url(#pn' + i + ')"/>' +                 // silver needle to the tip
+        '<ellipse cx="16" cy="43" rx="5" ry="1.7" fill="rgba(0,0,0,.16)"/>' +                   // soft cast on the surface (behind)
+        '<path d="M14.7 20.5 L16 43.6 L17.3 20.5 Z" fill="url(#pn' + i + ')"/>' +                 // silver needle
+        '<ellipse cx="16" cy="42.7" rx="2.9" ry="1.15" fill="rgba(0,0,0,.36)"/>' +               // puncture hole over the tip — needle sinks in
+        '<ellipse cx="16" cy="41.8" rx="3.2" ry="0.9" fill="rgba(255,255,255,.22)"/>' +           // raised lip catching light
         '<ellipse cx="16" cy="20.5" rx="4.1" ry="1.7" fill="#cdd2d6"/>' +                        // collar
         '<ellipse cx="16" cy="20.7" rx="4.1" ry="1.2" fill="rgba(0,0,0,.10)"/>' +                // collar underside
         '<circle cx="16" cy="13" r="11" fill="url(#pb' + i + ')"/>' +                            // red ball head
@@ -1515,8 +1576,127 @@ return maplibregl$1;
     }
     requestAnimationFrame(fly);
   }
+  // ============ open-field trip planner ============
+  // Tap the search bar → describe any trip in plain language → /api/plan (your Anthropic key via a
+  // Vercel function) returns an itinerary → drop numbered push-pins, draw the route, list the stops.
+  const pillMid   = document.querySelector('.pill-mid');
+  const psheet    = document.getElementById('psheet');
+  const pq        = document.getElementById('pq');
+  const pgo       = document.getElementById('pgo');
+  const pstatus   = document.getElementById('pstatus');
+  const pitin     = document.getElementById('pitin');
+  let planMarkers = [];
+
+  function openPlanner() { if (flightMode) return; psheet.classList.add('open'); setTimeout(() => pq.focus(), 60); }
+  function closePlanner() { psheet.classList.remove('open'); }
+  pillMid.addEventListener('click', openPlanner);
+  document.getElementById('psheetScrim').addEventListener('click', closePlanner);
+  document.getElementById('pclose').addEventListener('click', closePlanner);
+  document.querySelectorAll('.pchip').forEach(c => c.addEventListener('click', () => { pq.value = c.textContent; pq.focus(); }));
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+
+  function ensurePlanLayer() {
+    if (map.getSource('plan-route')) return;
+    try {
+      map.addSource('plan-route', { type:'geojson', data:{ type:'FeatureCollection', features:[] } });
+      map.addLayer({ id:'plan-route-line', type:'line', source:'plan-route',
+        layout:{ 'line-cap':'round', 'line-join':'round' },
+        paint:{ 'line-color':'#FF385C', 'line-width':3, 'line-dasharray':[1.6,1.4], 'line-opacity':.92 } });
+    } catch (_) {}
+  }
+  function clearPlan() {
+    planMarkers.forEach(m => m.remove()); planMarkers = [];
+    if (map.getSource('plan-route')) map.getSource('plan-route').setData({ type:'FeatureCollection', features:[] });
+    pitin.classList.remove('open'); pitin.innerHTML = '';
+    const cs = SCREEN.querySelector('.cards-scroll'); if (cs) cs.style.display = '';
+  }
+
+  // numbered version of the skeuomorphic push pin
+  function planPinEl(n, name) {
+    const el = document.createElement('div'); el.className = 'trippin'; el.title = name;
+    el.innerHTML =
+      '<svg width="32" height="44" viewBox="0 0 32 44">' +
+        '<defs>' +
+          '<radialGradient id="ppb' + n + '" cx="39%" cy="32%" r="72%">' +
+            '<stop offset="0%" stop-color="#ff9aa1"/><stop offset="44%" stop-color="#FF385C"/><stop offset="100%" stop-color="#cf1f43"/>' +
+          '</radialGradient>' +
+          '<linearGradient id="ppn' + n + '" x1="0" y1="0" x2="1" y2="0">' +
+            '<stop offset="0%" stop-color="#8a9095"/><stop offset="42%" stop-color="#eef1f3"/><stop offset="100%" stop-color="#767c81"/>' +
+          '</linearGradient>' +
+        '</defs>' +
+        '<ellipse cx="16" cy="43" rx="5" ry="1.7" fill="rgba(0,0,0,.16)"/>' +
+        '<path d="M14.7 20.5 L16 43.6 L17.3 20.5 Z" fill="url(#ppn' + n + ')"/>' +
+        '<ellipse cx="16" cy="42.7" rx="2.9" ry="1.15" fill="rgba(0,0,0,.36)"/>' +
+        '<ellipse cx="16" cy="20.5" rx="4.1" ry="1.7" fill="#cdd2d6"/>' +
+        '<ellipse cx="16" cy="20.7" rx="4.1" ry="1.2" fill="rgba(0,0,0,.10)"/>' +
+        '<circle cx="16" cy="13" r="11" fill="url(#ppb' + n + ')"/>' +
+        '<ellipse cx="12" cy="8.8" rx="3.2" ry="2.2" fill="rgba(255,255,255,.42)"/>' +
+        '<text x="16" y="16.6" text-anchor="middle" font-family="-apple-system,system-ui,sans-serif" font-size="11" font-weight="700" fill="#fff">' + n + '</text>' +
+      '</svg>';
+    return el;
+  }
+
+  async function runPlan() {
+    const prompt = (pq.value || '').trim();
+    if (!prompt) { pq.focus(); return; }
+    pgo.disabled = true; pstatus.className = 'pstatus busy'; pstatus.textContent = 'Planning your trip…';
+    try {
+      const r = await fetch('/api/plan', { method:'POST', headers:{ 'content-type':'application/json' }, body: JSON.stringify({ prompt }) });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data || !Array.isArray(data.stops)) throw new Error((data && data.error) || 'Could not plan that trip — try rephrasing.');
+      pgo.disabled = false; pstatus.textContent = ''; pstatus.className = 'pstatus';
+      closePlanner();
+      renderPlan(data);
+    } catch (e) {
+      pgo.disabled = false; pstatus.className = 'pstatus err';
+      pstatus.textContent = (e && e.message) ? e.message : 'Something went wrong.';
+    }
+  }
+  pgo.addEventListener('click', runPlan);
+  pq.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runPlan(); } });
+
+  function renderPlan(plan) {
+    clearPlan();
+    ensurePlanLayer();
+    if (flightMode) closeFlight();
+    const stops = (plan.stops || []).filter(s => isFinite(+s.lat) && isFinite(+s.lng)).map(s => ({ ...s, lat:+s.lat, lng:+s.lng }));
+    if (!stops.length) return;
+    const cs = SCREEN.querySelector('.cards-scroll'); if (cs) cs.style.display = 'none';
+
+    if (map.getSource('plan-route'))
+      map.getSource('plan-route').setData({ type:'Feature', properties:{}, geometry:{ type:'LineString', coordinates: stops.map(s => [s.lng, s.lat]) } });
+
+    stops.forEach((s, i) => {
+      const m = new maplibregl.Marker({ element: planPinEl(i + 1, s.name), anchor:'bottom', occludedOpacity:0 }).setLngLat([s.lng, s.lat]).addTo(map);
+      planMarkers.push(m);
+    });
+
+    const lngs = stops.map(s => s.lng), lats = stops.map(s => s.lat);
+    const span = Math.max(Math.max(...lngs) - Math.min(...lngs), Math.max(...lats) - Math.min(...lats));
+    const pad = stops.length > 1 ? Math.max(0.4, span * 0.12) : 4;
+    const maxZ = plan.mode === 'walk' ? 13 : (plan.mode === 'car' ? 8.5 : 6);
+    map.fitBounds([[Math.min(...lngs) - pad, Math.min(...lats) - pad], [Math.max(...lngs) + pad, Math.max(...lats) + pad]],
+      { padding:{ top:100, bottom:300, left:40, right:40 }, maxZoom:maxZ, duration:1400, essential:true });
+
+    const rows = stops.map((s, i) =>
+      '<div class="pit-row" data-lng="' + s.lng + '" data-lat="' + s.lat + '">' +
+        '<div class="pit-n">' + (i + 1) + '</div>' +
+        '<div class="pit-body"><div class="pit-name">' + esc(s.name) + (s.nights ? (' · ' + s.nights + 'n') : '') + '</div>' +
+        (s.why ? ('<div class="pit-why">' + esc(s.why) + '</div>') : '') + '</div>' +
+      '</div>').join('');
+    pitin.innerHTML =
+      '<div class="pit-head"><div><div class="pit-title">' + esc(plan.title || 'Your trip') + '</div>' +
+      (plan.summary ? ('<div class="pit-sum">' + esc(plan.summary) + '</div>') : '') + '</div>' +
+      '<button class="pit-x" id="pitX" aria-label="clear">&times;</button></div>' +
+      '<div class="pit-list">' + rows + '</div>';
+    pitin.classList.add('open');
+    document.getElementById('pitX').addEventListener('click', clearPlan);
+    pitin.querySelectorAll('.pit-row').forEach(row => row.addEventListener('click', () =>
+      map.flyTo({ center:[+row.dataset.lng, +row.dataset.lat], zoom:8.5, duration:1100, essential:true })));
+  }
+
   map.on('load', start);
-  setTimeout(start, 400);
-</script>
+  setTimeout(start, 400);</script>
 </body>
 </html>
