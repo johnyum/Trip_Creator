@@ -334,34 +334,35 @@
   .pit-why { margin-top:2px; font:400 12px/1.35 -apple-system,system-ui,sans-serif; color:#777; }
 
   /* Dock */
+  .dock {
+    position:absolute; top:802px; left:0; right:0; z-index:4;
+    display:flex; justify-content:center; align-items:center; gap:14px;
+    pointer-events:none;                 /* gaps pass through to the map; buttons re-enable below */
+  }
   .dock-btn {
-    position:absolute; top:802px; width:40px; height:40px; border-radius:50%;
+    position:relative; width:40px; height:40px; border-radius:50%; pointer-events:auto;
     background:var(--glass-bg); -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
     border:0.5px solid var(--glass-border); display:flex; align-items:center; justify-content:center;
-    box-shadow:var(--glass-shadow), var(--glass-sheen); cursor:pointer; color:var(--icon-grey); z-index:4;
-    transition:transform .14s var(--ease-out), background .18s var(--ease-out), box-shadow .18s var(--ease-out), width .42s var(--ease-smooth), left .42s var(--ease-smooth);
+    box-shadow:var(--glass-shadow), var(--glass-sheen); cursor:pointer; color:var(--icon-grey);
+    transition:transform .14s var(--ease-out), background .18s var(--ease-out), box-shadow .18s var(--ease-out);
   }
   .dock-btn:active { transform:scale(.9); }
   .dock-btn.on { background:var(--m, var(--accent)); border-color:transparent; color:#fff; -webkit-backdrop-filter:none; backdrop-filter:none; box-shadow:0 6px 16px rgba(18,28,54,.30), inset 0 1px 0 rgba(255,255,255,.30); }
-  .d1 { left:calc(50% - 104px); } .d2 { left:calc(50% - 48px); } .d3 { left:calc(50% + 8px); } .d4 { left:calc(50% + 64px); }
   .d1 { --m:var(--m-air); } .d2 { --m:var(--m-car); } .d3 { --m:var(--m-transit); } .d4 { --m:var(--m-walk); }
   .dock-btn svg { width:20px; height:20px; }
 
-  /* Medium zoom (Greater-LA region): the air tab grows rightward into a "Book a flight" pill while
-     the other transport options tuck away. Toggled via .book / .tucked in syncChrome. */
-  .dock-label { display:none; white-space:nowrap; font:600 15px/1 var(--cereal); color:#fff; }
-  .dock-btn.book {
-    width:176px; border-radius:22px; justify-content:center; gap:9px; padding:0 18px;
-    left:50%; transform:translateX(-50%);
-    background:var(--m-air); border-color:transparent; color:#fff;
-    -webkit-backdrop-filter:none; backdrop-filter:none;
+  /* Medium zoom (a city's region level): a "Book a flight" pill appears between the plane and car —
+     same blue as the air mode — and opens that city's flight list. Shown via .show in syncChrome. */
+  .dock-pill {
+    display:none; pointer-events:auto; align-items:center; gap:8px; height:40px; padding:0 16px;
+    border-radius:22px; background:var(--m-air); color:#fff; border:0; cursor:pointer;
+    font:600 14px/1 var(--cereal); white-space:nowrap;
     box-shadow:0 8px 20px rgba(40,90,210,.38), inset 0 1px 0 rgba(255,255,255,.30);
-    transition:width .42s var(--ease-smooth), left .42s var(--ease-smooth), transform .42s var(--ease-smooth), background .2s var(--ease-out);
+    transition:transform .14s var(--ease-out);
   }
-  .dock-btn.book .dock-label { display:inline-block; }
-  .dock-btn.book:active { transform:translateX(-50%) scale(.97); }
-  .dock-btn.tucked { opacity:0; transform:scale(.4); pointer-events:none;
-    transition:transform .34s var(--ease-smooth), opacity .26s ease; }
+  .dock-pill.show { display:inline-flex; }
+  .dock-pill:active { transform:scale(.96); }
+  .dock-pill svg { width:18px; height:18px; }
 
   /* Large web view (desktop ≥600px): center the vibes strip and bottom controls.
      The mobile build runs in a 402-wide viewport, so this never triggers on phones. */
@@ -569,7 +570,8 @@
       </div>
     </div>
 
-    <div class="dock-btn d1 on" data-mode="air"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div class="dock" id="dock">
+      <div class="dock-btn d1 on" data-mode="air"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0_3512_312941)">
 <path d="M7.912 0.0025C7.53005 0.0249462 7.17112 0.192497 6.90864 0.47087C6.64616 0.749243 6.49998 1.11739 6.5 1.5V5.7805L0.5 9.21V11.1185L6.5 9.8325V11.8985L4.5 13.2325V15.1935L8 14.027L11.5 15.1935V13.2325L9.5 11.8985V9.8325L15.5 11.1185V9.21L9.5 5.781V1.5C9.5 1.10218 9.34196 0.720644 9.06066 0.43934C8.77936 0.158035 8.39782 0 8 0L7.912 0.0025Z" fill="currentColor"/>
 </g>
@@ -578,14 +580,24 @@
 <rect width="16" height="16" fill="white"/>
 </clipPath>
 </defs>
-</svg><span class="dock-label">Book a flight</span></div>
-    <div class="dock-btn d2" data-mode="car"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+</svg></div>
+      <button class="dock-pill" id="bookFlight"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_3512_312941)">
+<path d="M7.912 0.0025C7.53005 0.0249462 7.17112 0.192497 6.90864 0.47087C6.64616 0.749243 6.49998 1.11739 6.5 1.5V5.7805L0.5 9.21V11.1185L6.5 9.8325V11.8985L4.5 13.2325V15.1935L8 14.027L11.5 15.1935V13.2325L9.5 11.8985V9.8325L15.5 11.1185V9.21L9.5 5.781V1.5C9.5 1.10218 9.34196 0.720644 9.06066 0.43934C8.77936 0.158035 8.39782 0 8 0L7.912 0.0025Z" fill="currentColor"/>
+</g>
+<defs>
+<clipPath id="clip0_3512_312941">
+<rect width="16" height="16" fill="white"/>
+</clipPath>
+</defs>
+</svg><span>Book a flight</span></button>
+      <div class="dock-btn d2" data-mode="car"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M11.6535 2.25C12.1412 2.25 12.5843 2.53367 12.7885 2.9765L12.8235 3.0615L13.4575 4.75H15.5V6.25H14.0195L14.258 6.885C14.8575 7.38239 15.2174 8.11111 15.248 8.8895L15.25 9V13.5C15.2502 14.0233 14.8468 14.4583 14.325 14.4975L14.25 14.5H13.25C12.7267 14.5002 12.2917 14.0968 12.2525 13.575L12.25 13.5V12.75H3.75V13.5C3.75017 14.0233 3.34684 14.4583 2.825 14.4975L2.75 14.5H1.75C1.22669 14.5002 0.791748 14.0968 0.7525 13.575L0.75 13.5V9C0.75 8.15 1.136 7.3895 1.742 6.885L1.98 6.25H0.5V4.75H2.5425L3.176 3.061C3.34734 2.60439 3.7686 2.28913 4.255 2.2535L4.3465 2.25H11.6535ZM12.75 8.75C12.3358 8.75 12 9.08579 12 9.5C12 9.91421 12.3358 10.25 12.75 10.25C13.1642 10.25 13.5 9.91421 13.5 9.5C13.5 9.08579 13.1642 8.75 12.75 8.75ZM3.25 8.75C2.83579 8.75 2.5 9.08579 2.5 9.5C2.5 9.91421 2.83579 10.25 3.25 10.25C3.66421 10.25 4 9.91421 4 9.5C4 9.08579 3.66421 8.75 3.25 8.75ZM11 8.85H5V10.15H11V8.85ZM11.48 3.75H4.5195L3.582 6.25H12.4175L11.48 3.75Z" fill="currentColor"/>
 </svg></div>
-    <div class="dock-btn d3" data-mode="transit"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <div class="dock-btn d3" data-mode="transit"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M11.5 14.25V15.75H4.5V14.25H11.5ZM12 0C12.6442 3.72212e-05 13.2636 0.248771 13.7289 0.69433C14.1942 1.13989 14.4695 1.74788 14.4975 2.3915L14.5 2.5V10.5C14.5 11.1442 14.2512 11.7636 13.8057 12.2289C13.3601 12.6942 12.7521 12.9695 12.1085 12.9975L12 13H4C3.35577 13 2.73642 12.7512 2.27111 12.3057C1.8058 11.8601 1.53046 11.2521 1.5025 10.6085L1.5 10.5V2.5C1.50004 1.85577 1.74877 1.23642 2.19433 0.771111C2.63989 0.305803 3.24788 0.0304597 3.8915 0.0025L4 0H12ZM4.5 10.25C4.30109 10.25 4.11032 10.329 3.96967 10.4697C3.82902 10.6103 3.75 10.8011 3.75 11C3.75 11.1989 3.82902 11.3897 3.96967 11.5303C4.11032 11.671 4.30109 11.75 4.5 11.75C4.69891 11.75 4.88968 11.671 5.03033 11.5303C5.17098 11.3897 5.25 11.1989 5.25 11C5.25 10.8011 5.17098 10.6103 5.03033 10.4697C4.88968 10.329 4.69891 10.25 4.5 10.25ZM11.5 10.25C11.3011 10.25 11.1103 10.329 10.9697 10.4697C10.829 10.6103 10.75 10.8011 10.75 11C10.75 11.1989 10.829 11.3897 10.9697 11.5303C11.1103 11.671 11.3011 11.75 11.5 11.75C11.6989 11.75 11.8897 11.671 12.0303 11.5303C12.171 11.3897 12.25 11.1989 12.25 11C12.25 10.8011 12.171 10.6103 12.0303 10.4697C11.8897 10.329 11.6989 10.25 11.5 10.25ZM7.25 4H2.5V8H7.25V4ZM13.5 4H8.75V8H13.5V4Z" fill="currentColor"/>
 </svg></div>
-    <div class="dock-btn d4" data-mode="walk"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <div class="dock-btn d4" data-mode="walk"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0_3512_312947)">
 <path d="M5.45 11L6.754 12.164L5.154 16.004L3.25 16L5.45 11ZM7.5 2.08248e-07C7.94034 -0.000200666 8.36843 0.144925 8.71787 0.412861C9.06731 0.680798 9.31856 1.05657 9.43263 1.48187C9.54671 1.90718 9.51724 2.35824 9.34879 2.76509C9.18034 3.17193 8.88233 3.51181 8.501 3.732V4.315C9.055 4.485 9.51 4.91 9.708 5.478C9.95168 6.17428 10.3953 6.78322 10.9833 7.22861C11.5714 7.674 12.2777 7.93607 13.014 7.982L13.249 7.989H13.749V9.489H13.249C12.549 9.48978 11.8559 9.35017 11.2108 9.07844C10.5656 8.80672 9.98152 8.40838 9.493 7.907C9.323 7.734 9.143 7.55 9 7.356V10.5L10.875 12.098V16H9.125V12.902L5.6 9.8V6.252C5.06232 6.56547 4.61175 7.00867 4.28945 7.54111C3.96716 8.07355 3.78341 8.67826 3.755 9.3L3.75 10H2.25V9.5C2.25012 8.28106 2.67424 7.10011 3.44964 6.15959C4.22504 5.21907 5.30345 4.57756 6.5 4.345V3.732C6.11874 3.51185 5.82077 3.17206 5.65231 2.76532C5.48384 2.35857 5.45429 1.90761 5.56824 1.48236C5.68219 1.05711 5.93326 0.681334 6.28253 0.413318C6.6318 0.145303 7.05975 1.95778e-05 7.5 2.08248e-07V2.08248e-07Z" fill="currentColor"/>
 </g>
@@ -595,6 +607,7 @@
 </clipPath>
 </defs>
 </svg></div>
+    </div>
 
     <div class="flightsheet" id="flightsheet">
       <div class="fs-head" id="fsHead">
@@ -876,13 +889,12 @@ return maplibregl$1;
     const fly = s.local ? '' : modeChip();
     el.innerHTML = '<span class="mk-pill"><span class="mk-pop">' + fly + s.n + t + '</span></span>';
     el.addEventListener('click', () => {
-      if (region) {                                       // Greater-LA picker
-        if (s.n === 'Los Angeles') { enterLATrendy(); return; }
+      if (region) {                                       // a city's region level
+        if (s.n === regionCity && CITY_DATA[regionCity]) { enterHoods(regionCity); return; }  // city-core pin drills in
         map.easeTo({ center: [s.lng, s.lat], zoom: Math.min(map.getZoom() + 1.8, 11), duration: 800, essential: true });
         return;
       }
-      if (s.n === 'New York') { enterMetro(); return; }
-      if (s.n === 'Los Angeles' && !s.local) { enterGreaterLA(); return; }   // tap LA → Greater-LA picker
+      if (CITY_DATA[s.n] && !s.local) { enterRegion(s.n); return; }   // tap a known city → its region level
       viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom() });
       const z = s.local ? Math.min(map.getZoom() + 2.3, 15) : Math.min(Math.max(map.getZoom() + 2.4, 7.6), 11.5);
       if (s.local) { holdStripDuringMove(); hoodOverview = false; refreshStays(); }   // drilling into a neighbourhood: homes now appear
@@ -1419,16 +1431,12 @@ return maplibregl$1;
     if (stripShown && Math.abs(map.getZoom() - _zSettled) > 0.35) hideStrip();
   });
 
-  // Medium zoom (Greater-LA region): the air tab becomes a "Book a flight" pill and the other
-  // transport options tuck away. Everywhere else the normal four-button dock is shown.
+  // Medium zoom (a city's region level): show the "Book a flight" pill between the plane and car.
+  // The four transport icons stay put; the dock row just reflows to make room.
   function syncChrome() {
-    const bookMode = region && !flightMode;
-    const air = document.querySelector('.dock-btn.d1');
-    if (air) air.classList.toggle('book', bookMode);
-    ['.d2', '.d3', '.d4'].forEach(sel => {
-      const d = document.querySelector('.dock-btn' + sel);
-      if (d) d.classList.toggle('tucked', bookMode);
-    });
+    const show = region && !flightMode;
+    const bf = document.getElementById('bookFlight');
+    if (bf) bf.classList.toggle('show', show);
   }
 
   // This MapLibre build ignores the marker `occludedOpacity` option, so hide trip / plan pins ourselves
@@ -1539,8 +1547,9 @@ return maplibregl$1;
   let globalVibe = 'popular', localType = null, localVibe = null, localSet = null;
   let viewStack = [];   // remembers prior zoom views so Back can return to them
   let metro = false;    // true while inside a metropolitan (borough) view
-  let region = false;   // true at the Greater-LA mid level — region-scale vibe groups, no neighbourhood prices
-  let regionVibe = 'iconic';   // which Greater-LA group is selected at the region level
+  let region = false;   // true at a city's mid (region) level — region-scale vibe groups, no prices
+  let regionVibe = 'iconic';   // which region group is selected
+  let regionCity = null;       // which city we're at the region level for (keys into CITY_DATA)
   let hoodOverview = false;   // true while neighbourhood pills are shown — homes/prices stay hidden until you tap one
   function setStripVisible(v) { wrap.style.display = v ? '' : 'none'; }   // hide the vibe strip at the region level
   // Greater Los Angeles: the mid level between the country map and LA's neighbourhoods. Pure
@@ -1569,34 +1578,36 @@ return maplibregl$1;
     map.easeTo({ center: [-73.96, 40.71], zoom: 9.2, duration: 1000, easing: t => 1 - Math.pow(1 - t, 3), essential: true });
     map.once('moveend', () => layout());
   }
-  // Tapping Los Angeles at the country level drops into the Greater-LA picker: surrounding cities
-  // (Santa Monica, Pasadena, Anaheim …) and LA itself, with no vibe strip — just choices.
-  function enterGreaterLA() {
-    metro = false; region = true; localType = null; hoodOverview = false;
+  // Country level → a city's mid (region) level: region-scale vibe groups for that city. Tapping the
+  // city-core pin (named after the city) drills into its neighbourhoods; other pins just frame in.
+  function enterRegion(city) {
+    const cd = CITY_DATA[city]; if (!cd) return;
+    metro = false; region = true; regionCity = city; localType = null; hoodOverview = false;
     viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom() });  // country — Back returns here
-    regionVibe = 'iconic';
-    currentSpots = regionSpots('iconic');
+    regionVibe = cd.region[0].id;
+    currentSpots = regionSpots(regionVibe);
     setStripVisible(true);
-    hideStrip(); showRegionCards();                       // render region strip (Iconic first) while hidden; slides in on arrival
+    hideStrip(); showRegionCards();                       // render region strip while hidden; slides in on arrival
     clearMarkers();
     // Frame the union of EVERY region group's spots, so switching vibes never pushes a pin off-screen.
-    const all = REGION_VIBES.flatMap(v => v.spots);
+    const all = cd.region.flatMap(v => v.spots);
     const lngs = all.map(s => s[2]), lats = all.map(s => s[1]);
     map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-      { padding:{ top:120, bottom:230, left:42, right:42 }, maxZoom: 9, duration:1300,
+      { padding:{ top:120, bottom:230, left:42, right:42 }, maxZoom: cd.regionMaxZoom || 9, duration:1300,
         easing: t => 1 - Math.pow(1 - t, 3), essential:true });
     map.once('moveend', layout); layout();
     syncChrome(); updateSearchBar();
-    // Safety net: if the settle event is missed/late on a slower device, still bring the strip in.
     setTimeout(() => { if (region && !stripShown) { setStripVisible(true); revealStrip(); } }, 1500);
   }
-  function enterLATrendy() {
+  // Region level → a city's neighbourhoods: the city's own hood vibe groups (real neighbourhoods).
+  function enterHoods(city) {
+    const cd = CITY_DATA[city]; if (!cd) return;
     metro = false; region = false;
-    viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom(), level:'region' });  // Back → Greater LA
-    localType = 'la'; hoodOverview = true;
+    viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom(), level:'region' });  // Back → region
+    localType = cd.hoodKey; hoodOverview = true;
     setStripVisible(true);
-    hideStrip(); showLocalCards('la');                    // render LA strip (Trendy first) while hidden; slides in on arrival
-    const tr = LOCAL_VIBES.la.find(v => v.id === 'trendy') || LOCAL_VIBES.la[0];
+    hideStrip(); showLocalCards(cd.hoodKey);              // render hood strip while hidden; slides in on arrival
+    const tr = LOCAL_VIBES[cd.hoodKey][0];
     localVibe = tr.id;
     currentSpots = tr.spots.map((sp, i) => ({ n:sp[0], lat:sp[1], lng:sp[2], mz:0, rank:i+1, local:true }));
     clearMarkers();
@@ -1650,16 +1661,25 @@ return maplibregl$1;
       {id:'coastal',label:'Coastal',icon:'beach',grad:G.f,zoom:11,spots:[['Santa Monica',34.0095,-118.4973],['Venice',33.9850,-118.4695],['Marina del Rey',33.9802,-118.4517],['Manhattan Beach',33.8847,-118.4109],['Malibu',34.0369,-118.6776],['Zuma Beach',34.0165,-118.8210]]},
       {id:'downtown',label:'Downtown',icon:'town',grad:G.a,zoom:13,spots:[['Arts District',34.0407,-118.2330],['Little Tokyo',34.0500,-118.2400],['Fashion District',34.0353,-118.2540],['Historic Core',34.0466,-118.2487],['Chinatown',34.0625,-118.2370],['Financial District',34.0509,-118.2566],['South Park',34.0430,-118.2660]]},
       {id:'glam',label:'Beverly Hills',icon:'gem',grad:G.d,zoom:12.5,spots:[['Rodeo Drive',34.0674,-118.4015],['Trousdale Estates',34.0958,-118.4036],['Bel Air',34.0936,-118.4595],['Holmby Hills',34.0772,-118.4258],['Westwood',34.0635,-118.4455],['Brentwood',34.0520,-118.4730]]}],
+    nyc:[
+      {id:'downtownny',label:'Downtown',icon:'town',grad:G.a,zoom:13,spots:[['SoHo',40.7233,-74.0030],['Tribeca',40.7163,-74.0086],['Financial District',40.7075,-74.0113],['Lower East Side',40.7150,-73.9843],['Chinatown',40.7158,-73.9970],['West Village',40.7358,-74.0036]]},
+      {id:'midtown',label:'Midtown',icon:'star',grad:G.b,zoom:13,spots:[['Times Square',40.7580,-73.9855],['Bryant Park',40.7536,-73.9832],['Hudson Yards',40.7538,-74.0019],['Koreatown',40.7475,-73.9860],['Grand Central',40.7527,-73.9772],['Hell\'s Kitchen',40.7638,-73.9918]]},
+      {id:'uptown',label:'Uptown',icon:'view',grad:G.c,zoom:13,spots:[['Upper East Side',40.7736,-73.9566],['Upper West Side',40.7870,-73.9754],['Harlem',40.8116,-73.9465],['Museum Mile',40.7813,-73.9590],['Morningside Heights',40.8075,-73.9626]]},
+      {id:'brooklyn',label:'Brooklyn',icon:'gem',grad:G.d,zoom:12.5,spots:[['Williamsburg',40.7081,-73.9571],['DUMBO',40.7033,-73.9881],['Park Slope',40.6710,-73.9814],['Bushwick',40.6958,-73.9171],['Brooklyn Heights',40.6959,-73.9931]]}],
+    paris:[
+      {id:'rightbank',label:'Right Bank',icon:'town',grad:G.a,zoom:13,spots:[['Le Marais',48.8590,2.3580],['Champs-Élysées',48.8698,2.3078],['Opéra',48.8709,2.3317],['Montmartre',48.8867,2.3431],['Bastille',48.8530,2.3690]]},
+      {id:'leftbank',label:'Left Bank',icon:'gem',grad:G.d,zoom:13,spots:[['Latin Quarter',48.8499,2.3470],['Saint-Germain',48.8540,2.3340],['Montparnasse',48.8421,2.3220],['Invalides',48.8566,2.3127],['Jardin du Luxembourg',48.8462,2.3372]]},
+      {id:'foodieparis',label:'Foodie',icon:'food',grad:G.c,zoom:13,spots:[['Rue Montorgueil',48.8645,2.3470],['Canal Saint-Martin',48.8709,2.3674],['Rue Cler',48.8556,2.3060],['Marché Bastille',48.8530,2.3690],['Rue Mouffetard',48.8418,2.3494]]},
+      {id:'chic',label:'Chic',icon:'star',grad:G.e,zoom:13,spots:[['Avenue Montaigne',48.8662,2.3050],['Place Vendôme',48.8675,2.3295],['Rue Saint-Honoré',48.8686,2.3289],['Trocadéro',48.8616,2.2890],['Champs-Élysées',48.8698,2.3078]]}],
     default:[
       {id:'downtown',label:'Near Downtown',icon:'town',grad:G.a,sat:['Downtown','City Center','Main Street','Old Town','Central Plaza']},
       {id:'hidden',label:'Hidden Gems',icon:'gem',grad:G.d,sat:['Backstreet','Local Favorite','Tucked Away','Secret Spot','Quiet Corner']},
       {id:'top',label:'Top Rated',icon:'star',grad:G.c,sat:['Five Star','Award Winner','Top Pick','Acclaimed','Best Reviewed']},
       {id:'family',label:'Family Friendly',icon:'view',grad:G.e,sat:['Family Park','Kids Zone','Easy Walk','Picnic Area','Playground']}]
   };
-  // Greater-LA mid level: the vibe strip returns, but with region-scale groups. Tapping one swaps
-  // which Greater-LA places are pinned WITHOUT changing zoom. 'Los Angeles' (in Iconic) still drills
-  // into the neighbourhood vibes; every other pin just frames in a touch closer.
-  const REGION_VIBES = [
+  // A city's mid level: region-scale vibe groups. Tapping a group swaps which places are pinned WITHOUT
+  // changing zoom; the city-core pin (named after the city) drills into its neighbourhoods.
+  const REGION_LA = [
     {id:'iconic',label:'Iconic',icon:'star',grad:G.e,spots:[
       ['Los Angeles',34.0407,-118.2468],['Hollywood Sign',34.1341,-118.3215],
       ['Santa Monica Pier',34.0083,-118.4988],['Rodeo Drive',34.0674,-118.4015],
@@ -1676,14 +1696,53 @@ return maplibregl$1;
       ['Mt Washington',34.0889,-118.2150],['Altadena',34.1897,-118.1312],
       ['Laguna Beach',33.5427,-117.7854]]}
   ];
+  const REGION_NYC = [
+    {id:'iconic',label:'Iconic',icon:'star',grad:G.e,spots:[
+      ['New York',40.7128,-74.0060],['Statue of Liberty',40.6892,-74.0445],
+      ['Times Square',40.7580,-73.9855],['Central Park',40.7812,-73.9665],
+      ['Brooklyn Bridge',40.7061,-73.9969]]},
+    {id:'foodie',label:'Foodie',icon:'food',grad:G.b,spots:[
+      ['Lower East Side',40.7180,-73.9874],['Chelsea Market',40.7424,-74.0061],
+      ['Flushing',40.7596,-73.8300],['Arthur Avenue',40.8543,-73.8880],
+      ['Smorgasburg',40.7220,-73.9576]]},
+    {id:'arts',label:'Arts & Culture',icon:'gem',grad:G.d,spots:[
+      ['The Met',40.7794,-73.9632],['MoMA',40.7614,-73.9776],['Broadway',40.7590,-73.9845],
+      ['Guggenheim',40.7830,-73.9590],['Lincoln Center',40.7725,-73.9835]]},
+    {id:'bohemian',label:'Bohemian',icon:'trail',grad:G.c,spots:[
+      ['Williamsburg',40.7081,-73.9571],['Bushwick',40.6958,-73.9171],
+      ['Greenwich Village',40.7336,-74.0027],['DUMBO',40.7033,-73.9881],
+      ['Astoria',40.7644,-73.9235]]}
+  ];
+  const REGION_PARIS = [
+    {id:'iconic',label:'Iconic',icon:'star',grad:G.e,spots:[
+      ['Paris',48.8566,2.3522],['Eiffel Tower',48.8584,2.2945],['Louvre',48.8606,2.3376],
+      ['Notre-Dame',48.8530,2.3499],['Arc de Triomphe',48.8738,2.2950]]},
+    {id:'historic',label:'Historic',icon:'town',grad:G.a,spots:[
+      ['Versailles',48.8049,2.1204],['Sacré-Cœur',48.8867,2.3431],['Panthéon',48.8462,2.3464],
+      ['Sainte-Chapelle',48.8554,2.3450],['Les Invalides',48.8566,2.3127]]},
+    {id:'foodie',label:'Foodie',icon:'food',grad:G.b,spots:[
+      ['Le Marais',48.8590,2.3580],['Rue Cler',48.8556,2.3060],['Canal Saint-Martin',48.8709,2.3674],
+      ['Montorgueil',48.8645,2.3470],['Rue Mouffetard',48.8418,2.3494]]},
+    {id:'bohemian',label:'Bohemian',icon:'trail',grad:G.c,spots:[
+      ['Montmartre',48.8867,2.3431],['Belleville',48.8721,2.3776],['Le Marais',48.8590,2.3580],
+      ['Latin Quarter',48.8499,2.3470],['Canal Saint-Martin',48.8709,2.3674]]}
+  ];
+  // The registry: a city name → its flight airport [code,lng,lat], its region groups, and the
+  // LOCAL_VIBES key for its neighbourhoods. Add a city here and the whole 3-tier flow lights up.
+  const CITY_DATA = {
+    'Los Angeles': { air:['LAX', -118.408, 33.942], region:REGION_LA, hoodKey:'la' },
+    'New York':    { air:['JFK', -73.778, 40.641],  region:REGION_NYC, hoodKey:'nyc' },
+    'Paris':       { air:['CDG', 2.548, 49.010],    region:REGION_PARIS, hoodKey:'paris' }
+  };
   function regionSpots(id) {
-    const v = REGION_VIBES.find(x => x.id === id) || REGION_VIBES[0];
+    const rv = (CITY_DATA[regionCity] && CITY_DATA[regionCity].region) || REGION_LA;
+    const v = rv.find(x => x.id === id) || rv[0];
     return v.spots.map((sp, i) => ({ n:sp[0], lat:sp[1], lng:sp[2], mz:0, rank:i+1, local:true }));
   }
   const TOWNS = [
     ['Whistler',50.12,-122.95,'ski'],['Aspen',39.19,-106.82,'ski'],['Banff',51.18,-115.57,'ski'],['Vail',39.64,-106.37,'ski'],['Lake Tahoe',39.10,-120.03,'ski'],['Queenstown',-45.03,168.66,'ski'],['Chamonix',45.92,6.87,'ski'],
     ['Maui',20.79,-156.33,'beach'],['Cancún',21.16,-86.85,'beach'],['Tulum',20.21,-87.46,'beach'],['Cabo San Lucas',22.89,-109.91,'beach'],['Puerto Vallarta',20.65,-105.22,'beach'],['Bali',-8.41,115.19,'beach'],['Phuket',7.88,98.39,'beach'],['Bora Bora',-16.5,-151.74,'beach'],['Maldives',3.2,73.0,'beach'],['Waikiki',21.28,-157.84,'beach'],
-    ['Los Angeles',34.05,-118.24,'la'],['Paris',48.86,2.35,'city'],['Tokyo',35.68,139.69,'city'],['New York',40.71,-74.0,'city'],['London',51.51,-0.13,'city'],['Rome',41.9,12.5,'city'],['Barcelona',41.39,2.17,'city'],['San Francisco',37.77,-122.42,'city'],['Mexico City',19.43,-99.13,'city'],['Bangkok',13.75,100.5,'city'],['Las Vegas',36.17,-115.14,'city'],
+    ['Los Angeles',34.05,-118.24,'la'],['Paris',48.86,2.35,'paris'],['Tokyo',35.68,139.69,'city'],['New York',40.71,-74.0,'nyc'],['London',51.51,-0.13,'city'],['Rome',41.9,12.5,'city'],['Barcelona',41.39,2.17,'city'],['San Francisco',37.77,-122.42,'city'],['Mexico City',19.43,-99.13,'city'],['Bangkok',13.75,100.5,'city'],['Las Vegas',36.17,-115.14,'city'],
     ['Sedona',34.87,-111.76,'desert'],['Palm Springs',33.83,-116.55,'desert'],['Joshua Tree',33.87,-115.90,'desert'],['Moab',38.57,-109.55,'desert'],['Grand Canyon',36.1,-112.11,'desert']
   ];
   function nearestTown(c) {
@@ -1765,7 +1824,8 @@ return maplibregl$1;
     wrap.scrollTo({ left:0 }); bindCards();
   }
   function showRegionCards() {
-    wrap.innerHTML = REGION_VIBES.map(v => localCardHtml(v, v.id === regionVibe)).join('');
+    const rv = (CITY_DATA[regionCity] && CITY_DATA[regionCity].region) || REGION_LA;
+    wrap.innerHTML = rv.map(v => localCardHtml(v, v.id === regionVibe)).join('');
     wrap.scrollTo({ left:0 }); bindCards();
   }
   // swap the strip to fit where you are: local vibes when zoomed into a place, global vibes otherwise.
@@ -2054,9 +2114,13 @@ return maplibregl$1;
   // Each transport mode reframes to a sensible distance from home, since every travel time is
   // measured from San Francisco: flights span the country, driving/transit a region, walking a city.
   const MODE_VIEW = { air:3.0, car:5.3, transit:5.7, walk:10.5 };
+  // "Book a flight" pill → opens the flight list for the city you're zoomed into (like tapping its airport).
+  document.getElementById('bookFlight').addEventListener('click', () => {
+    const a = (CITY_DATA[regionCity] && CITY_DATA[regionCity].air) || ['LAX', -118.408, 33.942];
+    openFlight(a[0], a[1], a[2]);
+  });
   document.querySelectorAll('.dock-btn').forEach(b => {
     b.addEventListener('click', () => {
-      if (b.classList.contains('book')) { openFlight('LAX', -118.408, 33.942); return; }  // region CTA → book a flight to LA
       const m = b.dataset.mode;
       if (m === mode) return;                                  // already on this mode — no-op
       document.querySelectorAll('.dock-btn').forEach(x => x.classList.remove('on'));
