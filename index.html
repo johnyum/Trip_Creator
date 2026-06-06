@@ -1748,7 +1748,7 @@ return maplibregl$1;
     metro = false; region = false;
     viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom(), level:'region' });  // Back → region
     localType = cd.hoodKey; hoodOverview = true;
-    setStripVisible(true);
+    setStripVisible(true); holdStripDuringMove();
     hideStrip(); showLocalCards(cd.hoodKey);              // render hood strip while hidden; slides in on arrival
     const tr = LOCAL_VIBES[cd.hoodKey][0];
     localVibe = tr.id;
@@ -1760,6 +1760,7 @@ return maplibregl$1;
         easing: t => 1 - Math.pow(1 - t, 3), essential:true });
     map.once('moveend', layout); layout();
     syncChrome(); updateSearchBar();
+    setTimeout(() => { if (localType && !stripShown) { setStripVisible(true); revealStrip(); } }, 1500);
   }
 
   const LOCAL_Z = 5.4;
@@ -2030,14 +2031,24 @@ return maplibregl$1;
       pillLeft.dataset.act = want;
       pillLeft.innerHTML = drilled ? BACK_SVG : LOGO_SVG;
     }
-    if (mode === 'air' && localType) {
+    if (region && regionCity) {
+      // one level in from country — the metro area you tapped into
+      pillT1.textContent = 'Greater ' + regionCity;
+      pillT2.textContent = 'Pick an area';
+    } else if ((localType && localType !== 'default') || metro) {
+      // a city's neighbourhoods / a borough view — name the area or city in view (any mode)
       const t = nearestTown(map.getCenter());
-      pillT1.textContent = (t ? t.n : 'This') + ' area';
+      pillT1.textContent = t ? t.n : (regionCity || 'This area');
       pillT2.textContent = 'a week in October';
     } else if (trip.dest) {
       pillT1.textContent = trip.dest;
       const wn = tripWhenText(), wo = tripWhoText();
       pillT2.textContent = (wn || 'Any week') + ' · ' + (wo || 'Any guests');
+    } else if (map.getZoom() >= 6.5) {
+      // free-zoomed past the country view onto a place — reflect it if we can name it
+      const t = nearestTown(map.getCenter());
+      pillT1.textContent = t ? t.n : 'Where to?';
+      pillT2.textContent = 'Anywhere · Any week';
     } else {
       pillT1.textContent = 'Where to?';
       pillT2.textContent = 'Anywhere · Any week';
