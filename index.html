@@ -1619,7 +1619,8 @@ return maplibregl$1;
   let globalVibe = 'popular', localType = null, localVibe = null, localSet = null;
   let viewStack = [];   // remembers prior zoom views so Back can return to them
   let metro = false;    // true while inside a metropolitan (borough) view
-  let region = false;   // true at the Greater-LA city picker (mid level) — sub-cities, no vibe strip
+  let region = false;   // true at the Greater-LA mid level — region-scale vibe groups, no neighbourhood prices
+  let regionVibe = 'iconic';   // which Greater-LA group is selected at the region level
   let hoodOverview = false;   // true while neighbourhood pills are shown — homes/prices stay hidden until you tap one
   function setStripVisible(v) { wrap.style.display = v ? '' : 'none'; }   // hide the vibe strip at the region level
   // Greater Los Angeles: the mid level between the country map and LA's neighbourhoods. Pure
@@ -1653,12 +1654,16 @@ return maplibregl$1;
   function enterGreaterLA() {
     metro = false; region = true; localType = null; hoodOverview = false;
     viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom() });  // country — Back returns here
-    currentSpots = GREATER_LA.slice();
-    hideStrip(); setStripVisible(false);
+    regionVibe = 'iconic';
+    currentSpots = regionSpots('iconic');
+    setStripVisible(true);
+    hideStrip(); showRegionCards();                       // render region strip (Iconic first) while hidden; slides in on arrival
     clearMarkers();
-    const lngs = GREATER_LA.map(s => s.lng), lats = GREATER_LA.map(s => s.lat);
+    // Frame the union of EVERY region group's spots, so switching vibes never pushes a pin off-screen.
+    const all = REGION_VIBES.flatMap(v => v.spots);
+    const lngs = all.map(s => s[2]), lats = all.map(s => s[1]);
     map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-      { padding:{ top:120, bottom:210, left:42, right:42 }, maxZoom: 9, duration:1300,
+      { padding:{ top:120, bottom:230, left:42, right:42 }, maxZoom: 9, duration:1300,
         easing: t => 1 - Math.pow(1 - t, 3), essential:true });
     map.once('moveend', layout); layout();
     syncChrome(); updateSearchBar();
@@ -1719,7 +1724,7 @@ return maplibregl$1;
       {id:'stars',label:'Stargazing',icon:'star',grad:G.d,sat:['Dark Sky Park','Star Mesa','Night Overlook','Observatory','Desert Camp']},
       {id:'trail',label:'Trailheads',icon:'trail',grad:G.f,sat:['Trailhead','Slot Canyon','Rim Trail','Summit Path','Oasis Walk']}],
     la:[
-      {id:'trendy',label:'Trendy',icon:'bar',grad:G.e,zoom:12,spots:[['Echo Park',34.0782,-118.2606],['Silver Lake',34.0900,-118.2700],['Los Feliz',34.1063,-118.2854],['Highland Park',34.1100,-118.1920],['Atwater Village',34.1175,-118.2647]]},
+      {id:'trendy',label:'Trendy',icon:'bar',grad:G.e,zoom:12,spots:[['Echo Park',34.0782,-118.2606],['Silver Lake',34.0900,-118.2700],['Los Feliz',34.1063,-118.2854],['Highland Park',34.1100,-118.1920],['Atwater Village',34.1175,-118.2647],['Abbot Kinney',33.9905,-118.4655],['Culver City',34.0231,-118.3970]]},
       {id:'hollywood',label:'Hollywood',icon:'star',grad:G.b,zoom:12,spots:[['Hollywood Blvd',34.1016,-118.3267],['Sunset Strip',34.0905,-118.3855],['West Hollywood',34.0900,-118.3617],['Hollywood Hills',34.1248,-118.3320],['Laurel Canyon',34.1099,-118.3815],['Runyon Canyon',34.1119,-118.3490],['Beachwood Canyon',34.1150,-118.3210]]},
       {id:'coastal',label:'Coastal',icon:'beach',grad:G.f,zoom:11,spots:[['Santa Monica',34.0095,-118.4973],['Venice',33.9850,-118.4695],['Marina del Rey',33.9802,-118.4517],['Manhattan Beach',33.8847,-118.4109],['Malibu',34.0369,-118.6776],['Zuma Beach',34.0165,-118.8210]]},
       {id:'downtown',label:'Downtown',icon:'town',grad:G.a,zoom:13,spots:[['Arts District',34.0407,-118.2330],['Little Tokyo',34.0500,-118.2400],['Fashion District',34.0353,-118.2540],['Historic Core',34.0466,-118.2487],['Chinatown',34.0625,-118.2370],['Financial District',34.0509,-118.2566],['South Park',34.0430,-118.2660]]},
@@ -1730,6 +1735,29 @@ return maplibregl$1;
       {id:'top',label:'Top Rated',icon:'star',grad:G.c,sat:['Five Star','Award Winner','Top Pick','Acclaimed','Best Reviewed']},
       {id:'family',label:'Family Friendly',icon:'view',grad:G.e,sat:['Family Park','Kids Zone','Easy Walk','Picnic Area','Playground']}]
   };
+  // Greater-LA mid level: the vibe strip returns, but with region-scale groups. Tapping one swaps
+  // which Greater-LA places are pinned WITHOUT changing zoom. 'Los Angeles' (in Iconic) still drills
+  // into the neighbourhood vibes; every other pin just frames in a touch closer.
+  const REGION_VIBES = [
+    {id:'iconic',label:'Iconic',icon:'star',grad:G.e,spots:[
+      ['Los Angeles',34.0407,-118.2468],['Hollywood Sign',34.1341,-118.3215],
+      ['Santa Monica Pier',34.0083,-118.4988],['Rodeo Drive',34.0674,-118.4015]]},
+    {id:'themeparks',label:'Theme Parks',icon:'sun',grad:G.b,spots:[
+      ['Disneyland',33.8121,-117.9190],['Universal Studios',34.1381,-118.3534],
+      ["Knott's Berry Farm",33.8442,-117.9981],['Six Flags',34.4253,-118.5972]]},
+    {id:'historic',label:'Historic',icon:'town',grad:G.a,spots:[
+      ['Olvera Street',34.0573,-118.2376],['Old Town Pasadena',34.1455,-118.1506],
+      ['Mission San Gabriel',34.0972,-118.1059],['Queen Mary',33.7530,-118.1903],
+      ['San Juan Capistrano',33.5017,-117.6628]]},
+    {id:'bohemian',label:'Bohemian',icon:'trail',grad:G.c,spots:[
+      ['Topanga Canyon',34.0936,-118.6009],['Laurel Canyon',34.1099,-118.3815],
+      ['Mt Washington',34.0889,-118.2150],['Altadena',34.1897,-118.1312],
+      ['Laguna Beach',33.5427,-117.7854]]}
+  ];
+  function regionSpots(id) {
+    const v = REGION_VIBES.find(x => x.id === id) || REGION_VIBES[0];
+    return v.spots.map((sp, i) => ({ n:sp[0], lat:sp[1], lng:sp[2], mz:0, rank:i+1, local:true }));
+  }
   const TOWNS = [
     ['Whistler',50.12,-122.95,'ski'],['Aspen',39.19,-106.82,'ski'],['Banff',51.18,-115.57,'ski'],['Vail',39.64,-106.37,'ski'],['Lake Tahoe',39.10,-120.03,'ski'],['Queenstown',-45.03,168.66,'ski'],['Chamonix',45.92,6.87,'ski'],
     ['Maui',20.79,-156.33,'beach'],['Cancún',21.16,-86.85,'beach'],['Tulum',20.21,-87.46,'beach'],['Cabo San Lucas',22.89,-109.91,'beach'],['Puerto Vallarta',20.65,-105.22,'beach'],['Bali',-8.41,115.19,'beach'],['Phuket',7.88,98.39,'beach'],['Bora Bora',-16.5,-151.74,'beach'],['Maldives',3.2,73.0,'beach'],['Waikiki',21.28,-157.84,'beach'],
@@ -1756,6 +1784,12 @@ return maplibregl$1;
       c.addEventListener('click', () => {
         const cur = wrap.querySelector('.cat.active');
         if (cur !== c) { cur && cur.classList.remove('active'); c.classList.add('active'); centerCard(c); }
+        if (region) {                               // Greater-LA group: swap which places are pinned, hold the zoom
+          regionVibe = c.dataset.id;
+          currentSpots = regionSpots(regionVibe);
+          clearMarkers(); layout();
+          return;
+        }
         if (localType) {
           localVibe = c.dataset.id;
           const v = localSet && localSet.find(x => x.id === c.dataset.id);
@@ -1808,13 +1842,17 @@ return maplibregl$1;
     wrap.innerHTML = set.map((v, i) => localCardHtml(v, i === 0)).join('');
     wrap.scrollTo({ left:0 }); bindCards();
   }
+  function showRegionCards() {
+    wrap.innerHTML = REGION_VIBES.map(v => localCardHtml(v, v.id === regionVibe)).join('');
+    wrap.scrollTo({ left:0 }); bindCards();
+  }
   // swap the strip to fit where you are: local vibes when zoomed into a place, global vibes otherwise.
   // Works in every transport mode — zoom into LA on any mode and you get Hollywood / Trendy / etc.
   function updateContext() {
     if (flightMode) return;
     const z = map.getZoom();
     if (region) {
-      if (z >= LOCAL_Z) { setStripVisible(false); syncChrome(); updateSearchBar(); return; }  // still in the picker
+      if (z >= LOCAL_Z) { setStripVisible(true); if (!stripShown) revealStrip(); syncChrome(); updateSearchBar(); return; }  // still in the picker — keep the region vibe strip up
       // zoomed out below the city threshold → leave the region, back to global explore
       region = false; localType = null; hoodOverview = false;
       setStripVisible(true); showGlobalCards();
@@ -1877,9 +1915,9 @@ return maplibregl$1;
     // Step out exactly one level. hideStrip lets the next set slide in rather than pop.
     hideStrip(); clearMarkers();
     const v = viewStack.length ? viewStack.pop() : { c: SF, z: 3.0 };
-    if (v.level === 'region') {                            // back into the Greater-LA city picker
+    if (v.level === 'region') {                            // back into the Greater-LA mid level
       region = true; metro = false; localType = null; hoodOverview = false;
-      currentSpots = GREATER_LA.slice(); setStripVisible(false);
+      currentSpots = regionSpots(regionVibe); setStripVisible(true); showRegionCards();
     } else {                                                // back to a plain explore view (country)
       region = false; localType = null; hoodOverview = false;
       currentSpots = spotsFor(activeVibe); setStripVisible(true); showGlobalCards();
