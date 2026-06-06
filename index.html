@@ -336,7 +336,7 @@
   /* Dock */
   .dock {
     position:absolute; top:802px; left:0; right:0; z-index:4;
-    display:flex; justify-content:center; align-items:center; gap:14px;
+    display:flex; justify-content:center; align-items:center; gap:16px;
     pointer-events:none;                 /* gaps pass through to the map; buttons re-enable below */
   }
   .dock-btn {
@@ -462,7 +462,7 @@
   .stage{ transform:none !important; }
   .screen{ width:100vw !important; height:100vh !important; height:100dvh !important; border-radius:0 !important; box-shadow:none !important; }
   .pill{ top:auto; bottom:96px; }
-  .dock-btn{ top:auto; bottom:40px; }
+  .dock{ top:auto; bottom:40px; }
   .status{ display:none !important; }
 </style>
 </head>
@@ -581,16 +581,7 @@
 </clipPath>
 </defs>
 </svg></div>
-      <button class="dock-pill" id="bookFlight"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<g clip-path="url(#clip0_3512_312941)">
-<path d="M7.912 0.0025C7.53005 0.0249462 7.17112 0.192497 6.90864 0.47087C6.64616 0.749243 6.49998 1.11739 6.5 1.5V5.7805L0.5 9.21V11.1185L6.5 9.8325V11.8985L4.5 13.2325V15.1935L8 14.027L11.5 15.1935V13.2325L9.5 11.8985V9.8325L15.5 11.1185V9.21L9.5 5.781V1.5C9.5 1.10218 9.34196 0.720644 9.06066 0.43934C8.77936 0.158035 8.39782 0 8 0L7.912 0.0025Z" fill="currentColor"/>
-</g>
-<defs>
-<clipPath id="clip0_3512_312941">
-<rect width="16" height="16" fill="white"/>
-</clipPath>
-</defs>
-</svg><span>Book a flight</span></button>
+      <button class="dock-pill" id="bookFlight"><span>Book a flight</span></button>
       <div class="dock-btn d2" data-mode="car"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M11.6535 2.25C12.1412 2.25 12.5843 2.53367 12.7885 2.9765L12.8235 3.0615L13.4575 4.75H15.5V6.25H14.0195L14.258 6.885C14.8575 7.38239 15.2174 8.11111 15.248 8.8895L15.25 9V13.5C15.2502 14.0233 14.8468 14.4583 14.325 14.4975L14.25 14.5H13.25C12.7267 14.5002 12.2917 14.0968 12.2525 13.575L12.25 13.5V12.75H3.75V13.5C3.75017 14.0233 3.34684 14.4583 2.825 14.4975L2.75 14.5H1.75C1.22669 14.5002 0.791748 14.0968 0.7525 13.575L0.75 13.5V9C0.75 8.15 1.136 7.3895 1.742 6.885L1.98 6.25H0.5V4.75H2.5425L3.176 3.061C3.34734 2.60439 3.7686 2.28913 4.255 2.2535L4.3465 2.25H11.6535ZM12.75 8.75C12.3358 8.75 12 9.08579 12 9.5C12 9.91421 12.3358 10.25 12.75 10.25C13.1642 10.25 13.5 9.91421 13.5 9.5C13.5 9.08579 13.1642 8.75 12.75 8.75ZM3.25 8.75C2.83579 8.75 2.5 9.08579 2.5 9.5C2.5 9.91421 2.83579 10.25 3.25 10.25C3.66421 10.25 4 9.91421 4 9.5C4 9.08579 3.66421 8.75 3.25 8.75ZM11 8.85H5V10.15H11V8.85ZM11.48 3.75H4.5195L3.582 6.25H12.4175L11.48 3.75Z" fill="currentColor"/>
 </svg></div>
