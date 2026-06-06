@@ -354,12 +354,16 @@
   .dock-btn.gone { transform:translateY(96px); opacity:0; pointer-events:none;
     transition:transform .42s var(--ease-smooth), opacity .26s ease; }
   .citysheet {
-    position:absolute; left:0; right:0; top:707px; bottom:0; z-index:3;
+    position:absolute; left:0; right:0; top:697px; bottom:0; z-index:3;
     background:#fff; border-radius:26px 26px 0 0; box-shadow:0 -14px 40px rgba(0,0,0,.16);
     transform:translateY(120%); transition:transform .5s var(--ease-smooth);
     will-change:transform;
   }
-  .cs-head { position:absolute; top:0; left:0; right:0; height:27px; touch-action:none; cursor:grab; z-index:2; }
+  /* When the search bar is reparented INTO the sheet it gets this class so its
+     position is measured from the sheet top (not the screen) and it rides the
+     sheet's single transform. */
+  .citysheet > .pill { top:23px !important; left:24px; right:24px; transform:none !important; }
+  .cs-head { position:absolute; top:0; left:0; right:0; height:23px; touch-action:none; cursor:grab; z-index:2; }
   .cs-grip { position:absolute; top:10px; left:50%; transform:translateX(-50%);
     width:38px; height:5px; border-radius:3px; background:#dcdcdc; }
   .cs-cta {
@@ -1442,27 +1446,41 @@ return maplibregl$1;
   const citysheet = document.getElementById('citysheet');
   const csHead = document.getElementById('csHead');
   const csCta = document.getElementById('csCta');
-  const CITY_COLLAPSE = 48;                 // open → collapsed drag distance (search bar drops to ~40px above bottom)
+  const CITY_COLLAPSE = 58;                 // up (box showing) → resting (search bar ~40px above bottom)
   let cityTY = 0, cityUp = false;
+  // The search bar (.pill) is reparented INTO the sheet at city level, so ONE transform on the sheet
+  // carries the grip + search bar + Search-flights box together. At country level it floats over the map.
   function paintCity(ty) {
     cityTY = ty;
     citysheet.style.transform = 'translateY(' + ty + 'px)';
-    pillEl.style.transform = 'translateY(' + ty + 'px)';
-    csCta.style.opacity = String(Math.max(0, 1 - ty / 30));
+    csCta.style.opacity = String(Math.max(0, 1 - ty / 34));   // box fades as the sheet collapses
+  }
+  function dockPillInSheet() {
+    if (pillEl.parentNode !== citysheet) {
+      pillEl.style.transition = 'none';
+      citysheet.appendChild(pillEl);          // now a child → .citysheet>.pill CSS pins it 23px below the grip
+      pillEl.style.transform = '';
+    }
+  }
+  function undockPill() {
+    if (pillEl.parentNode === citysheet) {
+      pillEl.style.transition = 'none';
+      SCREEN.insertBefore(pillEl, citysheet); // back to floating; reverts to its own top:730 spot
+      pillEl.style.transform = '';
+    }
   }
   function showCitySheet() {
     cityUp = true;
+    dockPillInSheet();
     citysheet.style.transition = 'transform .5s var(--ease-smooth)';
-    pillEl.style.transition = 'transform .5s var(--ease-smooth)';
-    paintCity(0);
+    paintCity(CITY_COLLAPSE);                 // rest low: search bar ~40px above the bottom, box tucked away
   }
   function hideCitySheet() {
     cityUp = false;
     citysheet.style.transition = 'transform .42s var(--ease-smooth)';
-    pillEl.style.transition = 'transform .42s var(--ease-smooth)';
     citysheet.style.transform = 'translateY(120%)';
-    pillEl.style.transform = 'translateY(0)';
     cityTY = 0;
+    undockPill();
   }
   function syncChrome() {
     const city = (!!localType || region) && !flightMode;
@@ -1473,7 +1491,7 @@ return maplibregl$1;
   let csDrag = null;
   csHead.addEventListener('pointerdown', e => {
     csDrag = { y: e.clientY, ty: cityTY };
-    citysheet.style.transition = 'none'; pillEl.style.transition = 'none';
+    citysheet.style.transition = 'none';
     try { csHead.setPointerCapture(e.pointerId); } catch (_) {}
   });
   csHead.addEventListener('pointermove', e => {
@@ -1486,8 +1504,7 @@ return maplibregl$1;
   function endCsDrag() {
     if (!csDrag) return; csDrag = null;
     const target = cityTY > CITY_COLLAPSE / 2 ? CITY_COLLAPSE : 0;  // snap to nearest detent
-    const spring = 'transform .42s cubic-bezier(.34,1.4,.6,1)';
-    citysheet.style.transition = spring; pillEl.style.transition = spring;
+    citysheet.style.transition = 'transform .42s cubic-bezier(.34,1.4,.6,1)';
     paintCity(target);
   }
   csHead.addEventListener('pointerup', endCsDrag);
