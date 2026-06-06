@@ -1414,10 +1414,15 @@ return maplibregl$1;
   map.on('move', () => { if (!suppressLayout) layout(); updateLoc(); refreshAirports(); refreshAccess(); applyRails(); declutterAirports(); declutterAccess(); updateSearchBar(); drawArc(); refreshStays(); occludeFarPins(); syncMapBg(); });
   // The vibe strip only re-evaluates once the camera settles, so the zoom completes first and THEN
   // the new set animates in — it reads as a deliberate hand-off rather than a swap mid-zoom.
-  map.on('moveend', updateContext);
-  // As soon as a zoom starts, clear the strip so it's empty during the move; the new set slides in
-  // from the right on moveend. Skipped for strip-driven moves, the intro sweep, and flight mode.
-  map.on('zoomstart', () => { if (!holdStrip && !flightMode && !introFlight) hideStrip(); });
+  let _zSettled = map.getZoom();
+  map.on('moveend', () => { updateContext(); _zSettled = map.getZoom(); });
+  // Fade the strip out only when the zoom genuinely changes (a real zoom in/out), then slide the new
+  // set in from the right on settle. A pan or tiny jitter never crosses the threshold, so the vibes
+  // stay rock-steady while you just move around at one level. Skipped for strip-driven moves & flight.
+  map.on('zoom', () => {
+    if (holdStrip || flightMode || introFlight) return;
+    if (stripShown && Math.abs(map.getZoom() - _zSettled) > 0.35) hideStrip();
+  });
 
   // City-level chrome: at a recognised place (and not mid-flight-sheet) the transport dock slides
   // away and the backing sheet with its "Search flights" box rises behind the search bar.
@@ -1556,13 +1561,14 @@ return maplibregl$1;
   // neighbourhoods (Los Feliz / Silver Lake / Echo Park …) with the Trendy card pre-selected.
   function enterLA() {
     metro = false;
-    viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom() });
+    viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom() });  // where you came from
+    viewStack.push({ c: [-117.95, 33.75], z: 6.4 });    // regional fork: Back lands on LA + San Diego + nearby first
     localType = 'la'; hoodOverview = true;
-    showLocalCards('la');                                 // LA strip, Trendy first & active
+    hideStrip(); showLocalCards('la');                    // render LA strip (Trendy first) while hidden; slides in on arrival
     const tr = LOCAL_VIBES.la.find(v => v.id === 'trendy') || LOCAL_VIBES.la[0];
     localVibe = tr.id;
     currentSpots = tr.spots.map((sp, i) => ({ n:sp[0], lat:sp[1], lng:sp[2], mz:0, rank:i+1, local:true }));
-    clearMarkers(); holdStripDuringMove();
+    clearMarkers();
     const lngs = tr.spots.map(s => s[2]), lats = tr.spots.map(s => s[1]);
     map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
       { padding:{ top:150, bottom:200, left:48, right:48 }, maxZoom: tr.zoom || 12, duration:1400,
@@ -1756,12 +1762,14 @@ return maplibregl$1;
     }
   }
   function goBack() {
-    if (viewStack.length) {
-      const v = viewStack.pop();
-      map.easeTo({ center: v.c, zoom: v.z, offset: [0, 32], duration: 800, easing: t => 1 - Math.pow(1 - t, 3), essential: true });
-    } else {
-      map.easeTo({ center: SF, zoom: 3.0, offset: [0, 32], duration: 800, easing: t => 1 - Math.pow(1 - t, 3), essential: true });
-    }
+    // Step out exactly one level. Reset the drill so the level we land on rebuilds from the explore
+    // set; updateContext swaps the strip to the right set on arrival (local cards if we land in a place,
+    // global otherwise). hideStrip lets the new set slide in rather than pop.
+    localType = null; hoodOverview = false;
+    currentSpots = spotsFor(activeVibe);
+    clearMarkers(); hideStrip(); showGlobalCards();
+    const v = viewStack.length ? viewStack.pop() : { c: SF, z: 3.0 };
+    map.easeTo({ center: v.c, zoom: v.z, offset: [0, 32], duration: 800, easing: t => 1 - Math.pow(1 - t, 3), essential: true });
   }
   pillLeft.addEventListener('click', () => {
     if (pillLeft.dataset.act === 'flightback') closeFlight();
