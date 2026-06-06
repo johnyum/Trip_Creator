@@ -805,7 +805,7 @@ return maplibregl$1;
       const box = { l:p.x - w/2 - GAP, t:p.y - LIFT - BH - GAP, r:p.x + w/2 + GAP, b:p.y - LIFT + GAP };
       let hit = null;
       for (const pl of placed) { if (boxesOverlap(box, pl.box)) { hit = pl; break; } }
-      if (!hit) {                              // room here — stands alone
+      if (!hit || s.local) {                   // room here, or a neighbourhood pill (those never group)
         const g = { type:'point', s };
         groups.push(g); placed.push({ box, g });
         continue;
@@ -854,7 +854,7 @@ return maplibregl$1;
       if (s.n === 'New York') { enterMetro(); return; }
       viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom() });
       const z = s.local ? Math.min(map.getZoom() + 2.3, 15) : Math.min(Math.max(map.getZoom() + 2.4, 7.6), 11.5);
-      if (s.local) holdStripDuringMove();                   // drilling into a neighbourhood shouldn't reshuffle the strip
+      if (s.local) { holdStripDuringMove(); hoodOverview = false; refreshStays(); }   // drilling into a neighbourhood: homes now appear
       map.easeTo({ center: [s.lng, s.lat], zoom: z, duration: 850, essential: true });
     });
     const m = new maplibregl.Marker({ element: el, anchor: 'bottom', occludedOpacity: 0 }).setLngLat([s.lng, s.lat]).addTo(map);
@@ -863,6 +863,7 @@ return maplibregl$1;
   // Grouped cities carry the same info as a single pill: starting price in flights, the nearest
   // member's travel time otherwise.
   function clusterSuffix(pts) {
+    if (pts.every(s => s.local)) return '';        // neighbourhoods are places, not priced destinations
     if (mode === 'air') {
       const pr = Math.min.apply(null, pts.map(s => Number(bestPrice(s.n, s.lng, s.lat)) || Infinity));
       return isFinite(pr) ? '<span class="mk-time"> · $' + pr + '</span>' : '';
@@ -990,7 +991,7 @@ return maplibregl$1;
   const STAY_ANCHORS = [[-73.97, 40.78, 340], [-73.95, 40.65, 250], [-73.79, 40.73, 180], [-73.87, 40.84, 150], [-74.15, 40.58, 160], [-118.385, 34.09, 300], [-118.27, 34.087, 220], [-118.49, 34.02, 330], [-118.78, 34.03, 460], [-118.245, 34.04, 200], [-118.4, 34.073, 430], [-122.42, 37.77, 330], [-122.29, 38.3, 380], [-122.46, 38.29, 330], [-120.04, 39.09, 300], [-119.59, 37.745, 210], [-117.16, 32.72, 250], [-115.14, 36.13, 160], [-122.33, 47.61, 240], [-122.68, 45.52, 190], [-104.99, 39.74, 200], [-106.82, 39.19, 480], [-105.94, 35.69, 210], [-112.07, 33.45, 180], [-111.76, 34.87, 300], [-110.76, 43.48, 360], [-97.74, 30.27, 220], [-86.78, 36.16, 240], [-90.07, 29.95, 230], [-90.05, 35.15, 150], [-94.58, 39.1, 150], [-95.37, 29.76, 170], [-80.19, 25.77, 290], [-79.93, 32.78, 270], [-81.09, 32.08, 210], [-77.04, 38.91, 250], [-71.06, 42.36, 280], [-87.63, 41.88, 210], [-79.38, 43.65, 200], [-73.57, 45.5, 190], [-123.12, 49.28, 240], [-115.57, 51.18, 310], [-99.13, 19.43, 130], [-86.85, 21.16, 220], [-96.72, 17.07, 120], [-157.86, 21.31, 320], [-0.13, 51.51, 260], [2.35, 48.86, 280], [2.17, 41.39, 200], [12.5, 41.9, 230], [4.9, 52.37, 250], [-9.14, 38.72, 180], [13.4, 52.52, 170], [11.26, 43.77, 210], [12.33, 45.44, 260], [23.73, 37.98, 150], [28.98, 41.01, 140], [139.69, 35.68, 210], [135.77, 35.01, 200], [100.5, 13.75, 90], [103.82, 1.35, 260], [114.17, 22.32, 250], [115.19, -8.41, 110], [126.98, 37.57, 160], [151.21, -33.87, 240], [144.96, -37.81, 210], [174.76, -36.85, 200], [55.18, 25.06, 260], [-43.17, -22.91, 160], [-58.38, -34.6, 120], [18.42, -33.92, 150], [-7.99, 31.63, 110]];   // [lng, lat, base nightly USD] — listing clusters hug these land cores
   function refreshStays() {
     const z = map.getZoom();
-    if (flightMode || z < STAY_Z) {
+    if (flightMode || z < STAY_Z || hoodOverview) {
       if (stayMarkers.size) { for (const m of stayMarkers.values()) m.remove(); stayMarkers.clear(); }
       return;
     }
@@ -1080,7 +1081,7 @@ return maplibregl$1;
   function goHome(ev) {
     if (ev) ev.stopPropagation();
     if (flightMode) closeFlight();
-    metro = false; viewStack = []; localType = null;
+    metro = false; viewStack = []; localType = null; hoodOverview = false;
     document.querySelectorAll('.dock-btn').forEach(x => x.classList.remove('on'));
     const d1 = document.querySelector('.d1'); if (d1) d1.classList.add('on');
     mode = 'air'; restyleAirpins();
@@ -1477,6 +1478,7 @@ return maplibregl$1;
   let globalVibe = 'popular', localType = null, localVibe = null, localSet = null;
   let viewStack = [];   // remembers prior zoom views so Back can return to them
   let metro = false;    // true while inside a metropolitan (borough) view
+  let hoodOverview = false;   // true while neighbourhood pills are shown — homes/prices stay hidden until you tap one
   const NYC_BOROUGHS = [
     {n:'Manhattan',lat:40.78,lng:-73.97,mz:0,rank:1,r:'Manhattan',local:true},
     {n:'Brooklyn',lat:40.65,lng:-73.95,mz:0,rank:2,r:'Brooklyn',local:true},
@@ -1529,11 +1531,11 @@ return maplibregl$1;
       {id:'stars',label:'Stargazing',icon:'star',grad:G.d,sat:['Dark Sky Park','Star Mesa','Night Overlook','Observatory','Desert Camp']},
       {id:'trail',label:'Trailheads',icon:'trail',grad:G.f,sat:['Trailhead','Slot Canyon','Rim Trail','Summit Path','Oasis Walk']}],
     la:[
-      {id:'hollywood',label:'Hollywood',icon:'star',grad:G.b,zoom:12,spots:[['Hollywood Blvd',34.1016,-118.3267],['Sunset Strip',34.0905,-118.3859],['Hollywood Hills',34.1248,-118.3320],['Thai Town',34.1016,-118.3076],['Runyon Canyon',34.1119,-118.3490],['West Hollywood',34.0900,-118.3617]]},
-      {id:'trendy',label:'Trendy',icon:'bar',grad:G.e,zoom:11.5,spots:[['Echo Park',34.0782,-118.2606],['Silver Lake',34.0900,-118.2700],['Los Feliz',34.1063,-118.2854],['Highland Park',34.1100,-118.1920],['Atwater Village',34.1175,-118.2647],['Melrose',34.0838,-118.3615]]},
+      {id:'hollywood',label:'Hollywood',icon:'star',grad:G.b,zoom:12,spots:[['Hollywood Blvd',34.1016,-118.3267],['Sunset Strip',34.0905,-118.3855],['West Hollywood',34.0900,-118.3617],['Hollywood Hills',34.1248,-118.3320],['Laurel Canyon',34.1099,-118.3815],['Runyon Canyon',34.1119,-118.3490],['Beachwood Canyon',34.1150,-118.3210]]},
+      {id:'trendy',label:'Trendy',icon:'bar',grad:G.e,zoom:11.5,spots:[['Echo Park',34.0782,-118.2606],['Silver Lake',34.0900,-118.2700],['Los Feliz',34.1063,-118.2854],['Highland Park',34.1100,-118.1920],['Abbot Kinney',33.9907,-118.4731]]},
       {id:'coastal',label:'Coastal',icon:'beach',grad:G.f,zoom:11,spots:[['Santa Monica',34.0095,-118.4973],['Venice',33.9850,-118.4695],['Marina del Rey',33.9802,-118.4517],['Manhattan Beach',33.8847,-118.4109],['Malibu',34.0369,-118.6776],['Zuma Beach',34.0165,-118.8210]]},
       {id:'downtown',label:'Downtown',icon:'town',grad:G.a,zoom:13,spots:[['Arts District',34.0407,-118.2330],['Little Tokyo',34.0500,-118.2400],['Fashion District',34.0353,-118.2540],['Historic Core',34.0466,-118.2487],['Chinatown',34.0625,-118.2370],['Financial District',34.0509,-118.2566],['South Park',34.0430,-118.2660]]},
-      {id:'glam',label:'Beverly Hills',icon:'gem',grad:G.d,zoom:12.5,spots:[['Rodeo Drive',34.0674,-118.4015],['Bel Air',34.0936,-118.4595],['Brentwood',34.0520,-118.4730],['Holmby Hills',34.0772,-118.4258],['Westwood',34.0635,-118.4455],['Beverly Gardens',34.0729,-118.4004]]}],
+      {id:'glam',label:'Beverly Hills',icon:'gem',grad:G.d,zoom:12.5,spots:[['Rodeo Drive',34.0674,-118.4015],['Trousdale Estates',34.0958,-118.4036],['Bel Air',34.0936,-118.4595],['Holmby Hills',34.0772,-118.4258],['Westwood',34.0635,-118.4455],['Brentwood',34.0520,-118.4730]]}],
     default:[
       {id:'downtown',label:'Near Downtown',icon:'town',grad:G.a,sat:['Downtown','City Center','Main Street','Old Town','Central Plaza']},
       {id:'hidden',label:'Hidden Gems',icon:'gem',grad:G.d,sat:['Backstreet','Local Favorite','Tucked Away','Secret Spot','Quiet Corner']},
@@ -1571,6 +1573,7 @@ return maplibregl$1;
           const v = localSet && localSet.find(x => x.id === c.dataset.id);
           if (v && v.spots) {                       // LA-style vibe: fly into the neighbourhood, show its places
             holdStripDuringMove();                   // keep the local strip steady while it flies in
+            hoodOverview = true;                     // neighbourhood pills only — homes appear after tapping one
             currentSpots = v.spots.map((sp, i) => ({ n:sp[0], lat:sp[1], lng:sp[2], mz:0, rank:i+1, local:true }));
             clearMarkers();
             const lngs = v.spots.map(s => s[2]), lats = v.spots.map(s => s[1]);
@@ -1625,9 +1628,9 @@ return maplibregl$1;
     let changed = false;
     if (z >= LOCAL_Z) {
       const t = nearestTown(map.getCenter()), type = t ? t.type : 'default';
-      if (localType !== type) { localType = type; showLocalCards(type); changed = true; if (!metro) { currentSpots = spotsFor(activeVibe); layout(); } }
+      if (localType !== type) { localType = type; hoodOverview = false; showLocalCards(type); changed = true; if (!metro) { currentSpots = spotsFor(activeVibe); layout(); } }
     } else if (localType) {
-      localType = null; metro = false; showGlobalCards(); changed = true;
+      localType = null; metro = false; hoodOverview = false; showGlobalCards(); changed = true;
       activeVibe = globalVibe; currentSpots = spotsFor(globalVibe); layout();
     }
     if (changed || !stripShown) revealStrip();              // slide the (new or restored) set in from the right
@@ -1896,7 +1899,7 @@ return maplibregl$1;
       b.classList.add('on');
       mode = m;
       flightDest = null; if (flightMode) closeFlight();
-      viewStack = []; metro = false; localType = null;         // switching modes returns to the top level
+      viewStack = []; metro = false; localType = null; hoodOverview = false;   // switching modes returns to the top level
       showGlobalCards();                                        // reset the strip now; a place-specific set fades in after the ease settles
       activeVibe = activeVibe || globalVibe;
       currentSpots = spotsFor(activeVibe);
