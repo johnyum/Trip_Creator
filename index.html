@@ -854,6 +854,7 @@ return maplibregl$1;
       if (s.n === 'New York') { enterMetro(); return; }
       viewStack.push({ c: [map.getCenter().lng, map.getCenter().lat], z: map.getZoom() });
       const z = s.local ? Math.min(map.getZoom() + 2.3, 15) : Math.min(Math.max(map.getZoom() + 2.4, 7.6), 11.5);
+      if (s.local) holdStripDuringMove();                   // drilling into a neighbourhood shouldn't reshuffle the strip
       map.easeTo({ center: [s.lng, s.lat], zoom: z, duration: 850, essential: true });
     });
     const m = new maplibregl.Marker({ element: el, anchor: 'bottom', occludedOpacity: 0 }).setLngLat([s.lng, s.lat]).addTo(map);
@@ -1364,6 +1365,9 @@ return maplibregl$1;
   // The vibe strip only re-evaluates once the camera settles, so the zoom completes first and THEN
   // the new set animates in — it reads as a deliberate hand-off rather than a swap mid-zoom.
   map.on('moveend', updateContext);
+  // As soon as a zoom starts, clear the strip so it's empty during the move; the new set slides in
+  // from the right on moveend. Skipped for strip-driven moves, the intro sweep, and flight mode.
+  map.on('zoomstart', () => { if (!holdStrip && !flightMode && !introFlight) hideStrip(); });
 
   // This MapLibre build ignores the marker `occludedOpacity` option, so hide trip / plan pins ourselves
   // when they sit on the far side of the globe: anything more than ~84° of arc from the map centre.
@@ -1443,6 +1447,7 @@ return maplibregl$1;
   // spots in roughly the region you're already looking at, so the pills spread out and fill the space.
   // It never snaps back to the avatar/home — only tapping the avatar does that.
   function frameVibe() {
+    holdStripDuringMove();                                  // picking a vibe re-frames the map but keeps the same strip
     const c = map.getCenter();
     // Flights have omnipresent world icons to skip; the driving/transit/walk sets are all real
     // reachable spots, so frame to all of them.
@@ -1565,6 +1570,7 @@ return maplibregl$1;
           localVibe = c.dataset.id;
           const v = localSet && localSet.find(x => x.id === c.dataset.id);
           if (v && v.spots) {                       // LA-style vibe: fly into the neighbourhood, show its places
+            holdStripDuringMove();                   // keep the local strip steady while it flies in
             currentSpots = v.spots.map((sp, i) => ({ n:sp[0], lat:sp[1], lng:sp[2], mz:0, rank:i+1, local:true }));
             clearMarkers();
             const lngs = v.spots.map(s => s[2]), lats = v.spots.map(s => s[1]);
@@ -1579,25 +1585,26 @@ return maplibregl$1;
       });
     });
   }
-  // When the strip's contents change (zooming into / out of a place), fade the old set out and
-  // let the new one rise in, so it reads as a deliberate reaction rather than an instant swap.
-  let _cardFadeT = null;
-  function fadeCards(render) {
-    clearTimeout(_cardFadeT);
-    wrap.style.transition = 'opacity .2s ease, transform .2s ease';
+  // The strip fades out as soon as a zoom begins (so it's empty mid-zoom) and the new set slides in
+  // from the right once the camera settles. holdStrip suppresses this for moves driven by the strip
+  // itself (picking a vibe / drilling into a neighbourhood) so those don't blink.
+  let holdStrip = false, stripShown = true;
+  function hideStrip() {
+    wrap.style.transition = 'opacity .22s ease';
     wrap.style.opacity = '0';
-    wrap.style.transform = 'translateY(6px)';
-    _cardFadeT = setTimeout(() => {
-      render();
-      wrap.style.transition = 'none';
-      wrap.style.opacity = '0';
-      wrap.style.transform = 'translateY(13px)';
-      wrap.getBoundingClientRect();                       // commit the start state before animating
-      wrap.style.transition = 'opacity .6s ease, transform .6s cubic-bezier(.16,1,.3,1)';
-      wrap.style.opacity = '1';
-      wrap.style.transform = 'translateY(0)';
-    }, 200);
+    stripShown = false;
   }
+  function revealStrip() {
+    wrap.style.transition = 'none';
+    wrap.style.opacity = '0';
+    wrap.style.transform = 'translateX(34px)';
+    wrap.getBoundingClientRect();                          // commit the start state before animating
+    wrap.style.transition = 'opacity .55s ease, transform .6s cubic-bezier(.16,1,.3,1)';
+    wrap.style.opacity = '1';
+    wrap.style.transform = 'translateX(0)';
+    stripShown = true;
+  }
+  function holdStripDuringMove() { holdStrip = true; map.once('moveend', () => { holdStrip = false; }); }
   function showGlobalCards() {
     wrap.innerHTML = GLOBAL_CARDS_HTML;
     wrap.querySelectorAll('.cat').forEach(c => c.classList.toggle('active', c.dataset.id === globalVibe));
@@ -1615,15 +1622,16 @@ return maplibregl$1;
   function updateContext() {
     if (flightMode) return;
     const z = map.getZoom();
+    let changed = false;
     if (z >= LOCAL_Z) {
       const t = nearestTown(map.getCenter()), type = t ? t.type : 'default';
-      if (localType !== type) { localType = type; fadeCards(() => showLocalCards(type)); if (!metro) { currentSpots = spotsFor(activeVibe); layout(); } }
-      updateSearchBar();
+      if (localType !== type) { localType = type; showLocalCards(type); changed = true; if (!metro) { currentSpots = spotsFor(activeVibe); layout(); } }
     } else if (localType) {
-      localType = null; metro = false; fadeCards(showGlobalCards);
+      localType = null; metro = false; showGlobalCards(); changed = true;
       activeVibe = globalVibe; currentSpots = spotsFor(globalVibe); layout();
-      updateSearchBar();
     }
+    if (changed || !stripShown) revealStrip();              // slide the (new or restored) set in from the right
+    updateSearchBar();
   }
   bindCards();
   // "+" tile opens the trip planner (placeholder action — repoint anywhere). Delegated so it
