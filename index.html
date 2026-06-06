@@ -162,16 +162,16 @@
   }
   .cards-scroll::-webkit-scrollbar { display:none; }
 
-  .cat { flex:0 0 auto; display:flex; flex-direction:column; align-items:center; cursor:pointer; }
+  .cat { flex:0 0 auto; width:72px; display:flex; flex-direction:column; align-items:center; cursor:pointer; transition:width .30s cubic-bezier(.34,1.1,.45,1); }
+  .cat.active { width:124px; }
   .thumb-wrap { height:72px; display:flex; align-items:center; }
   .thumb {
-    box-sizing:border-box; width:68px; height:68px;
+    box-sizing:border-box; width:100%; height:68px;
     border:2px solid #fff; border-radius:16px; overflow:hidden;
     box-shadow:0 6px 14px rgba(0,0,0,.20), 0 1px 4px rgba(0,0,0,.12);
-    transition:width .30s cubic-bezier(.34,1.1,.45,1), box-shadow .2s ease;
+    transition:box-shadow .2s ease;
   }
   .cat.active .thumb {
-    width:124px; height:68px;
     box-shadow:0 0 0 2px var(--ink), 0 7px 16px rgba(0,0,0,.26), 0 2px 5px rgba(0,0,0,.16);
   }
   .thumb img, .thumb .grad { width:100%; height:100%; object-fit:cover; display:block; }
@@ -180,7 +180,7 @@
   .label {
     margin-top:var(--s-2); font:var(--t-label); color:var(--ink);
     -webkit-text-stroke:3px #fff; paint-order:stroke fill;
-    white-space:nowrap; letter-spacing:.1px;
+    white-space:nowrap; letter-spacing:.1px; max-width:100%; overflow:hidden; text-overflow:ellipsis;
   }
 
   /* "+" tile at the end of the vibes strip — same glass as the search bar / dock,
@@ -261,50 +261,61 @@
   /* ---- three-tier search accordion (Where / When / Who) ---- */
   .ssheet { position:absolute; inset:0; z-index:72; display:none; }
   .ssheet.open { display:block; }
-  #ssheetScrim { position:absolute; inset:0; background:rgba(228,228,231,.6); -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px); }
-  .ss-scroll { position:absolute; inset:50px 0 92px 0; overflow-y:auto; padding:14px 12px 14px; -webkit-overflow-scrolling:touch; }
-  .ss-x { position:absolute; top:54px; right:16px; width:34px; height:34px; border:none; border-radius:50%; background:#fff; box-shadow:0 1px 5px rgba(0,0,0,.18); color:var(--ink); font-size:18px; line-height:1; cursor:pointer; z-index:3; }
-  .ss-card { background:#fff; border-radius:22px; box-shadow:0 3px 12px rgba(0,0,0,.08); margin-bottom:13px; overflow:hidden; }
-  .ss-sum { width:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border:none; background:transparent; cursor:pointer; font:400 15px/1 -apple-system,system-ui,sans-serif; }
+  #ssheetScrim { position:absolute; inset:0; background:rgba(232,232,235,.5); -webkit-backdrop-filter:saturate(140%) blur(11px); backdrop-filter:saturate(140%) blur(11px); }
+  .ss-top { position:absolute; top:54px; right:14px; display:flex; align-items:center; gap:8px; z-index:3; }
+  .ss-pillbtn { height:34px; box-sizing:border-box; border:0.5px solid var(--glass-border); border-radius:17px; background:var(--glass-bg);
+    -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur); box-shadow:var(--glass-shadow);
+    color:var(--ink); cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
+  .ss-clear-top { padding:0 15px; font:600 14px/1 -apple-system,system-ui,sans-serif; }
+  .ss-x { width:34px; padding:0; font-size:18px; }
+  .ss-scroll { position:absolute; inset:100px 0 76px 0; overflow-y:auto; padding:4px 12px 18px; -webkit-overflow-scrolling:touch; }
+  .ss-card { border-radius:24px; margin-bottom:12px; overflow:hidden;
+    background:var(--glass-bg); -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+    border:0.5px solid var(--glass-border); box-shadow:var(--glass-shadow), var(--glass-sheen); }
+  .ss-sumwrap, .ss-bodywrap { display:grid; transition:grid-template-rows .42s cubic-bezier(.32,.72,0,1); }
+  .ss-sumwrap { grid-template-rows:1fr; }
+  .ss-bodywrap { grid-template-rows:0fr; }
+  .ss-card.exp .ss-sumwrap { grid-template-rows:0fr; }
+  .ss-card.exp .ss-bodywrap { grid-template-rows:1fr; }
+  .ss-sum, .ss-body { overflow:hidden; min-height:0; }
+  .ss-sum { width:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border:none; background:transparent; cursor:pointer; font:400 15px/1 -apple-system,system-ui,sans-serif; opacity:1; transition:opacity .22s; }
+  .ss-card.exp .ss-sum { opacity:0; }
   .ss-sum .lab { color:#717171; }
   .ss-sum .val { color:var(--ink); font-weight:600; max-width:62%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; }
-  .ss-card.exp .ss-sum { display:none; }
-  .ss-body { display:none; padding:22px 22px 24px; }
-  .ss-card.exp .ss-body { display:block; }
-  .ss-title { margin:0 0 16px; font:700 26px/1.05 -apple-system,system-ui,sans-serif; color:var(--ink); }
-  .ss-search { display:flex; align-items:center; gap:10px; border:1px solid rgba(0,0,0,.16); border-radius:14px; padding:13px 16px; margin-bottom:16px; }
+  .ss-body { padding:2px 22px 24px; opacity:0; transition:opacity .3s .06s; }
+  .ss-card.exp .ss-body { opacity:1; }
+  .ss-title { margin:14px 0 16px; font:700 25px/1.05 -apple-system,system-ui,sans-serif; color:var(--ink); }
+  .ss-search { display:flex; align-items:center; gap:10px; border:1px solid rgba(0,0,0,.16); border-radius:14px; padding:13px 16px; margin-bottom:16px; background:rgba(255,255,255,.5); }
   .ss-search svg { width:18px; height:18px; color:#717171; flex:0 0 auto; }
   .ss-search input { border:none; outline:none; width:100%; font:400 15px/1 -apple-system,system-ui,sans-serif; color:var(--ink); background:transparent; }
   .ss-grouplab { font:600 14px/1 -apple-system,system-ui,sans-serif; color:var(--ink); margin:8px 2px 8px; }
   .dest { display:flex; align-items:center; gap:14px; padding:9px 2px; cursor:pointer; }
-  .dest .ic { width:48px; height:48px; border-radius:13px; background:#f2f2f4; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .dest .ic { width:48px; height:48px; border-radius:13px; background:rgba(255,255,255,.55); display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
   .dest .ic svg { width:24px; height:24px; color:#5b6770; }
   .dest .tx b { display:block; font:600 15px/1.2 -apple-system,system-ui,sans-serif; color:var(--ink); }
-  .dest .tx span { font:400 13px/1.3 -apple-system,system-ui,sans-serif; color:#9aa0a6; }
+  .dest .tx span { font:400 13px/1.3 -apple-system,system-ui,sans-serif; color:#717171; }
   .cal-dow { display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:4px; }
-  .cal-dow span { text-align:center; font:500 12px/1 -apple-system,system-ui,sans-serif; color:#9aa0a6; }
+  .cal-dow span { text-align:center; font:500 12px/1 -apple-system,system-ui,sans-serif; color:#717171; }
   .cal-mon { font:700 17px/1 -apple-system,system-ui,sans-serif; color:var(--ink); margin:16px 2px 12px; }
   .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); row-gap:3px; }
   .cal-day { height:44px; border:none; background:transparent; border-radius:50%; cursor:pointer; font:500 15px/1 -apple-system,system-ui,sans-serif; color:var(--ink); padding:0; }
   .cal-day.empty { visibility:hidden; }
-  .cal-day.past { color:#cfcfd4; text-decoration:line-through; cursor:default; }
-  .cal-day.inrange { background:#f2f2f4; border-radius:0; }
+  .cal-day.past { color:#b9b9c0; text-decoration:line-through; cursor:default; }
+  .cal-day.inrange { background:rgba(18,18,20,.10); border-radius:0; }
   .cal-day.sel { background:var(--ink); color:#fff; }
   .cal-day.sel.s-start { border-radius:50% 0 0 50%; }
   .cal-day.sel.s-end { border-radius:0 50% 50% 0; }
   .cal-day.sel.s-one { border-radius:50%; }
-  .who-row { display:flex; align-items:center; justify-content:space-between; padding:18px 0; border-bottom:1px solid rgba(0,0,0,.08); }
+  .who-row { display:flex; align-items:center; justify-content:space-between; padding:18px 0; border-bottom:1px solid rgba(0,0,0,.10); }
   .who-row:last-child { border-bottom:none; }
   .who-row .wt b { display:block; font:600 16px/1.2 -apple-system,system-ui,sans-serif; color:var(--ink); }
-  .who-row .wt span { font:400 13px/1.2 -apple-system,system-ui,sans-serif; color:#9aa0a6; }
+  .who-row .wt span { font:400 13px/1.2 -apple-system,system-ui,sans-serif; color:#717171; }
   .stp { display:flex; align-items:center; gap:14px; }
-  .stp button { width:34px; height:34px; border-radius:50%; border:1px solid #c8c8cc; background:#fff; color:#444; font-size:19px; line-height:1; cursor:pointer; padding:0; }
+  .stp button { width:34px; height:34px; border-radius:50%; border:1px solid #b7b7bd; background:rgba(255,255,255,.5); color:#444; font-size:19px; line-height:1; cursor:pointer; padding:0; }
   .stp button:disabled { opacity:.35; cursor:default; }
   .stp .n { min-width:18px; text-align:center; font:500 16px/1 -apple-system,system-ui,sans-serif; color:var(--ink); }
-  .ss-foot { position:absolute; left:0; right:0; bottom:0; height:84px; display:flex; align-items:center; justify-content:space-between; padding:0 20px;
-    background:#fff; border-top:1px solid rgba(0,0,0,.08); }
-  .ss-clear { border:none; background:transparent; font:600 15px/1 -apple-system,system-ui,sans-serif; color:var(--ink); text-decoration:underline; cursor:pointer; padding:8px 0; }
-  .ss-go { display:flex; align-items:center; gap:8px; border:none; border-radius:14px; background:#E0265E; color:#fff; padding:14px 22px; font:600 15px/1 -apple-system,system-ui,sans-serif; cursor:pointer; }
+  .ss-foot { position:absolute; left:0; right:0; bottom:0; padding:0; }
+  .ss-go { width:100%; height:60px; display:flex; align-items:center; justify-content:center; gap:9px; border:none; border-radius:0; background:#E0265E; color:#fff; font:600 16px/1 -apple-system,system-ui,sans-serif; cursor:pointer; }
   .ss-go svg { width:18px; height:18px; }
 
   /* itinerary result card */
@@ -502,37 +513,39 @@
 
     <div class="ssheet" id="ssheet">
       <div id="ssheetScrim"></div>
-      <button class="ss-x" id="ssX" aria-label="close">&times;</button>
+      <div class="ss-top">
+        <button class="ss-pillbtn ss-clear-top" id="ssClear">Clear all</button>
+        <button class="ss-pillbtn ss-x" id="ssX" aria-label="close">&times;</button>
+      </div>
       <div class="ss-scroll">
         <div class="ss-card exp" id="cWhere">
-          <button class="ss-sum" data-card="where"><span class="lab">Where</span><span class="val" id="sumWhere">I'm flexible</span></button>
-          <div class="ss-body">
+          <div class="ss-sumwrap"><button class="ss-sum" data-card="where"><span class="lab">Where</span><span class="val" id="sumWhere">I'm flexible</span></button></div>
+          <div class="ss-bodywrap"><div class="ss-body">
             <div class="ss-title">Where?</div>
             <div class="ss-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg><input id="destInput" placeholder="Search destinations" autocomplete="off"></div>
             <div id="destList"></div>
-          </div>
+          </div></div>
         </div>
         <div class="ss-card" id="cWhen">
-          <button class="ss-sum" data-card="when"><span class="lab">When</span><span class="val" id="sumWhen">Add dates</span></button>
-          <div class="ss-body">
+          <div class="ss-sumwrap"><button class="ss-sum" data-card="when"><span class="lab">When</span><span class="val" id="sumWhen">Add dates</span></button></div>
+          <div class="ss-bodywrap"><div class="ss-body">
             <div class="ss-title">When?</div>
             <div class="cal-dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
             <div id="calMonths"></div>
-          </div>
+          </div></div>
         </div>
         <div class="ss-card" id="cWho">
-          <button class="ss-sum" data-card="who"><span class="lab">Who</span><span class="val" id="sumWho">Add guests</span></button>
-          <div class="ss-body">
+          <div class="ss-sumwrap"><button class="ss-sum" data-card="who"><span class="lab">Who</span><span class="val" id="sumWho">Add guests</span></button></div>
+          <div class="ss-bodywrap"><div class="ss-body">
             <div class="ss-title">Who?</div>
             <div class="who-row"><div class="wt"><b>Adults</b><span>Ages 13 or above</span></div><div class="stp" data-g="adults"><button class="dec" aria-label="less">−</button><span class="n">0</span><button class="inc" aria-label="more">+</button></div></div>
             <div class="who-row"><div class="wt"><b>Children</b><span>Ages 2 – 12</span></div><div class="stp" data-g="children"><button class="dec" aria-label="less">−</button><span class="n">0</span><button class="inc" aria-label="more">+</button></div></div>
             <div class="who-row"><div class="wt"><b>Infants</b><span>Under 2</span></div><div class="stp" data-g="infants"><button class="dec" aria-label="less">−</button><span class="n">0</span><button class="inc" aria-label="more">+</button></div></div>
             <div class="who-row"><div class="wt"><b>Pets</b><span>Service animals welcome</span></div><div class="stp" data-g="pets"><button class="dec" aria-label="less">−</button><span class="n">0</span><button class="inc" aria-label="more">+</button></div></div>
-          </div>
+          </div></div>
         </div>
       </div>
       <div class="ss-foot">
-        <button class="ss-clear" id="ssClear">Clear all</button>
         <button class="ss-go" id="ssGo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>Search</button>
       </div>
     </div>
@@ -1426,18 +1439,17 @@ return maplibregl$1;
     ski:[
       {id:'skiio',label:'Ski-in Ski-out',icon:'ski',grad:G.a,sat:['Base Lodge','Gondola Plaza','Slopeside Inn','Chairlift 7','Village Run']},
       {id:'apres',label:'Après-Ski',icon:'bar',grad:G.b,sat:['Lodge Bar','Fondue House','Hot Tub Deck','Brewpub','Fire Pit Lounge']},
-      {id:'village',label:'Close to Village',icon:'town',grad:G.c,sat:['Village Stroll','Main Plaza','Market Square','The Promenade','Clock Tower']},
+      {id:'village',label:'Near Village',icon:'town',grad:G.c,sat:['Village Stroll','Main Plaza','Market Square','The Promenade','Clock Tower']},
       {id:'views',label:'Mountain Views',icon:'view',grad:G.f,sat:['Summit Deck','Glacier Lookout','Ridge Vista','Peak Café','Alpine Overlook']},
       {id:'easy',label:'Easy Runs',icon:'trail',grad:G.d,sat:['Bunny Hill','Green Run','Magic Carpet','Ski School','Family Slope']}],
     beach:[
       {id:'beachfront',label:'Beachfront',icon:'beach',grad:G.f,sat:['Beach Club','Boardwalk','The Pier','Shore Cabanas','Sandbar']},
       {id:'snorkel',label:'Snorkel Spots',icon:'wave',grad:G.c,sat:['Coral Reef','Hidden Cove','Blue Lagoon','Marine Park','Tide Pools']},
       {id:'sunset',label:'Sunset Bars',icon:'sun',grad:G.b,sat:['Sunset Deck','Tiki Bar','Cliff Lounge','Rooftop Bar','Beach Fire']},
-      {id:'townb',label:'Close to Town',icon:'town',grad:G.a,sat:['Old Town','The Marina','Main Street','Market','Harbor Walk']},
+      {id:'townb',label:'Near Town',icon:'town',grad:G.a,sat:['Old Town','The Marina','Main Street','Market','Harbor Walk']},
       {id:'familyb',label:'Family Beaches',icon:'star',grad:G.e,sat:['Calm Bay','Kids Cove','The Shallows','Picnic Beach','Lifeguard Beach']}],
     city:[
-      {id:'downtown',label:'Close to Downtown',icon:'town',grad:G.a,sat:['City Center','Main Square','Grand Avenue','Riverside','Old Quarter']},
-      {id:'fav',label:'Most Favorite',icon:'star',grad:G.b,sat:['The Landmark','Icon Plaza','Famous Bridge','Top Sight','Grand Gallery']},
+      {id:'downtown',label:'Near Downtown',icon:'town',grad:G.a,sat:['City Center','Main Square','Grand Avenue','Riverside','Old Quarter']},
       {id:'hidden',label:'Hidden Gems',icon:'gem',grad:G.d,sat:['Backstreet Café','Secret Courtyard','Local Bar','Tucked Bistro','Quiet Garden']},
       {id:'food',label:'Foodie Picks',icon:'food',grad:G.c,sat:['Food Market','Bistro Row','Night Market','Bakery Lane','Wine Bar']},
       {id:'night',label:'Nightlife',icon:'bar',grad:G.e,sat:['Club District','Live Music','Rooftop Bar','Jazz Cellar','Late Lounge']}],
@@ -1445,8 +1457,7 @@ return maplibregl$1;
       {id:'scenic',label:'Scenic Drives',icon:'view',grad:G.b,sat:['Canyon Drive','Red Rock Loop','Vista Point','Desert Overlook','Sunset Road']},
       {id:'wellness',label:'Wellness & Spa',icon:'spa',grad:G.c,sat:['Hot Springs','Spa Retreat','Yoga Mesa','Healing Center','Day Spa']},
       {id:'stars',label:'Stargazing',icon:'star',grad:G.d,sat:['Dark Sky Park','Star Mesa','Night Overlook','Observatory','Desert Camp']},
-      {id:'trail',label:'Trailheads',icon:'trail',grad:G.f,sat:['Trailhead','Slot Canyon','Rim Trail','Summit Path','Oasis Walk']},
-      {id:'favd',label:'Most Favorite',icon:'gem',grad:G.a,sat:['Famous Rock','Top Vista','Icon Trail','Best Sunset','Landmark']}],
+      {id:'trail',label:'Trailheads',icon:'trail',grad:G.f,sat:['Trailhead','Slot Canyon','Rim Trail','Summit Path','Oasis Walk']}],
     la:[
       {id:'hollywood',label:'Hollywood',icon:'star',grad:G.b,zoom:13.5,spots:[['Sunset Strip',34.0905,-118.3859],['Chateau Marmont',34.0989,-118.3705],['The Comedy Store',34.0962,-118.3853],['Runyon Canyon',34.1116,-118.3503],['Walk of Fame',34.1016,-118.3415],['The Roxy',34.0907,-118.3870]]},
       {id:'trendy',label:'Trendy',icon:'bar',grad:G.e,zoom:13,spots:[['Silver Lake Reservoir',34.0928,-118.2700],['Sunset Junction',34.0907,-118.2870],['Echo Park Lake',34.0731,-118.2606],['Intelligentsia',34.0905,-118.2887],['Sqirl',34.0796,-118.2876],['Griffith Observatory',34.1184,-118.3004]]},
@@ -1454,8 +1465,7 @@ return maplibregl$1;
       {id:'downtown',label:'Downtown',icon:'town',grad:G.a,zoom:13.5,spots:[['Grand Central Market',34.0506,-118.2487],['The Broad',34.0544,-118.2509],['Disney Concert Hall',34.0553,-118.2498],['Arts District',34.0407,-118.2330],['Little Tokyo',34.0505,-118.2400],['Crypto.com Arena',34.0430,-118.2673]]},
       {id:'glam',label:'Beverly Hills',icon:'gem',grad:G.d,zoom:13,spots:[['Rodeo Drive',34.0674,-118.4015],['Beverly Hills Hotel',34.0815,-118.4137],['The Getty',34.0780,-118.4741],['Bel Air',34.0936,-118.4595],['Brentwood',34.0520,-118.4730],['Beverly Gardens Park',34.0729,-118.4004]]}],
     default:[
-      {id:'fav',label:'Most Favorite',icon:'star',grad:G.b,sat:['Top Sight','The Landmark','Best Spot','Local Icon','Must See']},
-      {id:'downtown',label:'Close to Downtown',icon:'town',grad:G.a,sat:['Downtown','City Center','Main Street','Old Town','Central Plaza']},
+      {id:'downtown',label:'Near Downtown',icon:'town',grad:G.a,sat:['Downtown','City Center','Main Street','Old Town','Central Plaza']},
       {id:'hidden',label:'Hidden Gems',icon:'gem',grad:G.d,sat:['Backstreet','Local Favorite','Tucked Away','Secret Spot','Quiet Corner']},
       {id:'top',label:'Top Rated',icon:'star',grad:G.c,sat:['Five Star','Award Winner','Top Pick','Acclaimed','Best Reviewed']},
       {id:'family',label:'Family Friendly',icon:'view',grad:G.e,sat:['Family Park','Kids Zone','Easy Walk','Picnic Area','Playground']}]
@@ -1930,7 +1940,7 @@ return maplibregl$1;
   function buildCalendar() {
     const today = new Date(); today.setHours(0,0,0,0);
     let y = today.getFullYear(), m = today.getMonth(), html = '';
-    for (let mi = 0; mi < 5; mi++) {
+    for (let mi = 0; mi < 2; mi++) {
       const first = new Date(y, m + mi, 1), yy = first.getFullYear(), mm = first.getMonth();
       const days = new Date(yy, mm + 1, 0).getDate(), lead = first.getDay();
       html += '<div class="cal-mon">' + MN[mm] + ' ' + yy + '</div><div class="cal-grid">';
