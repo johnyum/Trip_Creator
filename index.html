@@ -1760,10 +1760,16 @@ return maplibregl$1;
       c.addEventListener('click', () => {
         const cur = wrap.querySelector('.cat.active');
         if (cur !== c) { cur && cur.classList.remove('active'); c.classList.add('active'); centerCard(c); }
-        if (region) {                               // Greater-LA group: swap which places are pinned, hold the zoom
+        if (region) {                               // region level: swap the pinned places AND tightly reframe to them
           regionVibe = c.dataset.id;
           currentSpots = regionSpots(regionVibe);
-          clearMarkers(); layout();
+          clearMarkers();
+          holdStripDuringMove();                     // keep the region strip steady while the camera reframes
+          const lngs = currentSpots.map(s => s.lng), lats = currentSpots.map(s => s.lat);
+          map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+            { padding:{ top:120, bottom:230, left:42, right:42 }, maxZoom:11, duration:850,
+               easing: t => 1 - Math.pow(1 - t, 3), essential:true });
+          map.once('moveend', layout); layout();
           return;
         }
         if (localType) {
