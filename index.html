@@ -368,15 +368,21 @@
 
   /* flight half-sheet (rises from the bottom; the search pill docks at its top) */
   .flightsheet {
-    position:absolute; left:0; right:0; bottom:0; height:560px; z-index:6;
+    position:absolute; left:0; right:0; bottom:0; height:760px; z-index:6;
     background:#fff; border-radius:26px 26px 0 0;
     box-shadow:0 -14px 44px rgba(0,0,0,.20);
     transform:translateY(108%); transition:transform .52s var(--ease-smooth);
     will-change:transform; backface-visibility:hidden;
-    display:flex; flex-direction:column; padding:86px 14px 0;
+    display:flex; flex-direction:column; padding:0 14px;
   }
   .flightsheet.up { transform:translateY(0); }
-  .fs-grip { position:absolute; top:11px; left:50%; transform:translateX(-50%); width:38px; height:5px; border-radius:3px; background:#e2e2e2; }
+  .fs-head { flex:0 0 auto; display:flex; flex-direction:column; align-items:stretch; padding-top:11px; touch-action:none; cursor:grab; }
+  .fs-grip { align-self:center; width:38px; height:5px; border-radius:3px; background:#dcdcdc; margin-bottom:10px; }
+  .fs-search { display:flex; align-items:center; gap:11px; width:100%; box-sizing:border-box; padding:12px 16px; margin-bottom:10px; border:1px solid #ececec; border-radius:30px; background:#fff; box-shadow:0 3px 12px rgba(0,0,0,.10); cursor:pointer; }
+  .fs-search > svg { width:18px; height:18px; color:#222; flex:0 0 auto; }
+  .fs-stx { min-width:0; display:flex; flex-direction:column; text-align:left; }
+  .fs-stx b { font:600 14px/1.2 var(--cereal); color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .fs-stx > span { font:500 12px/1.3 var(--cereal); color:#717171; }
   .fs-sub { font:600 13px/1.3 var(--cereal); color:#717171; padding:2px 8px 10px; display:flex; justify-content:space-between; }
   .fs-sub .price-h { color:#222; }
   .fs-list { flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 2px 18px; scrollbar-width:none; }
@@ -575,7 +581,13 @@
 </svg></div>
 
     <div class="flightsheet" id="flightsheet">
-      <div class="fs-grip"></div>
+      <div class="fs-head" id="fsHead">
+        <div class="fs-grip"></div>
+        <button class="fs-search" id="fsSearch">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
+          <span class="fs-stx"><b id="fsDest">Destination</b><span id="fsWhen">Departing today · 1 adult</span></span>
+        </button>
+      </div>
       <div class="fs-sub" id="fsSub"></div>
       <div class="fs-list" id="fsList"></div>
     </div>
@@ -827,9 +839,9 @@ return maplibregl$1;
   function modeSuffix(s) {
     if (s.local) return '';
     if (mode === 'air')     return '<span class="mk-time"> · $' + bestPrice(s.n, s.lng, s.lat) + '</span>';
-    if (mode === 'car')     { const m = travelMin(s, 85);     return m <= 1080 ? '<span class="mk-time"> · ' + fmtMin(m) + '</span>' : ''; }
-    if (mode === 'transit') { const m = travelMin(s, 72, 40); return m <= 1080 ? '<span class="mk-time"> · ' + fmtMin(m) + '</span>' : ''; }
-    if (mode === 'walk')    { const m = travelMin(s, 4.8);    return m <= 300  ? '<span class="mk-time"> · ' + fmtMin(m) + '</span>' : ''; }
+    if (mode === 'car')     { const m = s.mins != null ? s.mins : travelMin(s, 85);     return m <= 1080 ? '<span class="mk-time"> · ' + fmtMin(m) + '</span>' : ''; }
+    if (mode === 'transit') { const m = s.mins != null ? s.mins : travelMin(s, 72, 40); return m <= 1080 ? '<span class="mk-time"> · ' + fmtMin(m) + '</span>' : ''; }
+    if (mode === 'walk')    { const m = s.mins != null ? s.mins : travelMin(s, 4.8);    return m <= 300  ? '<span class="mk-time"> · ' + fmtMin(m) + '</span>' : ''; }
     return '';
   }
   function makePoint(s) {
@@ -855,7 +867,7 @@ return maplibregl$1;
     }
     const kmh = mode === 'walk' ? 4.8 : (mode === 'transit' ? 72 : 85), cap = mode === 'walk' ? 300 : 1080;
     let best = Infinity;
-    pts.forEach(s => { const m = travelMin(s, kmh, mode === 'transit' ? 40 : 0); if (m < best) best = m; });
+    pts.forEach(s => { const m = s.mins != null ? s.mins : travelMin(s, kmh, mode === 'transit' ? 40 : 0); if (m < best) best = m; });
     return best <= cap ? '<span class="mk-time"> · ' + fmtMin(best) + '</span>' : '';
   }
   function makeCluster(g) {
@@ -1392,14 +1404,23 @@ return maplibregl$1;
 
   // Only real, curated places are shown — nothing is synthesized.
   function airSpots(vibe) { return VIBES[vibe].air; }
+  // Each transport mode has its OWN destinations: flights are global, driving/transit are
+  // curated as reachable-from-SF regional sets, walking is within the city. Falls back to air.
+  function spotsFor(vibe) {
+    const v = VIBES[vibe]; if (!v) return [];
+    if (mode === 'car')     return v.car     || v.air;
+    if (mode === 'transit') return v.transit || v.air;
+    if (mode === 'walk')    return v.walk    || v.air;
+    return v.air;
+  }
   var mode = 'air';        // matches the highlighted dock button
   let activeVibe = null;
 
   function render(instant) {
     if (!activeVibe || !VIBES[activeVibe]) return;
-    // Every mode now shares the tiered destination set, so zooming reveals world → continental →
-    // local spots identically to flights. The mode only changes each pill's chip + suffix.
-    currentSpots = airSpots(activeVibe);
+    // Flights tier in (world → continental → local); driving/transit/walking use their own
+    // reachable-from-SF sets. The mode picks both the destinations and each pill's chip + suffix.
+    currentSpots = spotsFor(activeVibe);
     layout();
   }
 
@@ -1408,19 +1429,24 @@ return maplibregl$1;
   // It never snaps back to the avatar/home — only tapping the avatar does that.
   function frameVibe() {
     const c = map.getCenter();
-    const region = airSpots(activeVibe).filter(s => (s.mz||0) > 0.01);   // skip the omnipresent world icons
+    // Flights have omnipresent world icons to skip; the driving/transit/walk sets are all real
+    // reachable spots, so frame to all of them.
+    const all = spotsFor(activeVibe);
+    const region = (mode === 'air') ? all.filter(s => (s.mz||0) > 0.01) : all.slice();
     let use = region.filter(s => angDist(c.lng, c.lat, s.lng, s.lat) < 36);
     if (use.length < 2) use = region.filter(s => angDist(c.lng, c.lat, s.lng, s.lat) < 64);
+    if (use.length < 2) use = region.slice();              // walk/transit sets can sit far from current centre
     if (use.length < 2) { layout(); return; }
-    // Clamp the frame to a continent-scale window around the median so one far-flung spot (e.g. Hawaii
-    // out in the Pacific) can't drag the bounds wide and zoom the whole map out. Keeps it ~North America.
+    // Clamp the frame to a continent-scale window around the median so one far-flung spot can't drag
+    // the bounds wide. Driving/transit sets are regional already, so the clamp rarely bites.
     const lngs = use.map(s => s.lng).sort((a,b)=>a-b), lats = use.map(s => s.lat).sort((a,b)=>a-b);
     const med = arr => arr.length%2 ? arr[(arr.length-1)/2] : (arr[arr.length/2-1]+arr[arr.length/2])/2;
     const ml = med(lngs), mt = med(lats);
     const west  = Math.max(lngs[0], ml - 34), east  = Math.min(lngs[lngs.length-1], ml + 34);
     const south = Math.max(lats[0], mt - 20), north = Math.min(lats[lats.length-1], mt + 20);
+    const maxZ = mode === 'walk' ? 13.0 : (mode === 'air' ? 7.5 : 7.0);
     map.fitBounds([[west, south], [east, north]],
-      { padding:{ top:150, bottom:176, left:46, right:46 }, maxZoom:7.5,
+      { padding:{ top:150, bottom:176, left:46, right:46 }, maxZoom:maxZ,
          duration:1100, easing:t => 1 - Math.pow(1 - t, 3), essential:true });
     map.once('moveend', layout); layout();
   }
@@ -1669,7 +1695,7 @@ return maplibregl$1;
     setRoute(f.via);
     setArcTimeText(fmtDurShort(f.durMins));
     frameFlight(700);                                          // bring the layover hub into frame too
-    if (detent === 'collapsed') map.once('moveend', showAlternates);
+    if (detent === 'peek') map.once('moveend', showAlternates);
   });
   function setRoute(via) {
     routeVia = via || null;
@@ -1683,50 +1709,59 @@ return maplibregl$1;
     drawArc();
   }
 
-  // ---- the flight half-sheet (the search pill is its draggable header) ----
+  // ---- the flight bottom-sheet: peek (default) → full → dismiss, dragged by its header ----
   const fsheet = document.getElementById('flightsheet');
-  const fpill  = document.querySelector('.pill');
-  const PILL_TOP = 316;
-  function setSheet(ty) {
-    sheetTY = Math.max(0, Math.min(COLLAPSE_DY, ty));
-    fsheet.style.transform = 'translateY(' + sheetTY + 'px)';
-    fpill.style.top = (PILL_TOP + sheetTY) + 'px';
+  const fsHead = document.getElementById('fsHead');
+  const pillEl = document.querySelector('.pill');     // explore search bar (hidden while in flight mode)
+  const TOP_GAP = 64;
+  let SHEET_H = 760, PEEK_TY = 420;
+  function sizeSheet() {
+    SHEET_H = Math.max(440, SCREEN.clientHeight - TOP_GAP);
+    fsheet.style.height = SHEET_H + 'px';
+    PEEK_TY = Math.max(150, SHEET_H - 360);            // grip + search + ~3 flight rows stay visible
   }
-  // The flight view always keeps the two ends in frame — the avatar (SF) and the destination
-  // airport (plus the layover hub when there is one). Only the bottom padding changes between
-  // detents, so collapsing just reveals more map instead of jumping to a new place.
-  function curBottom() { return detent === 'collapsed' ? 188 : 566; }
+  function setSheetTY(ty) { sheetTY = Math.max(0, ty); fsheet.style.transform = 'translateY(' + sheetTY + 'px)'; }
+  function sheetCover() { return SHEET_H - sheetTY; }            // px of sheet currently on-screen
+  // Frame both ends of the trip above the peeked sheet so the dotted arc is always visible.
   function frameFlight(dur) {
     if (!flightDest) return;
     const pts = [SF, [flightDest.lng, flightDest.lat]];
     if (routeVia) pts.push([routeVia.lng, routeVia.lat]);
     const lngs = pts.map(p=>p[0]), lats = pts.map(p=>p[1]);
     map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-      { padding:{ top:118, bottom:curBottom(), left:70, right:96 }, maxZoom:7,
+      { padding:{ top:118, bottom:(SHEET_H - PEEK_TY) + 28, left:70, right:96 }, maxZoom:7,
          duration:dur, easing:t => 1 - Math.pow(1 - t, 3), essential:true });
   }
-  function expandSheet() { detent = 'expanded'; setSheet(0); clearAlternates(); frameFlight(820); }
-  function collapseSheet() { detent = 'collapsed'; setSheet(COLLAPSE_DY); frameFlight(820); map.once('moveend', showAlternates); }
-  // drag the search-bar header up/down to move between the two detents
-  let dragY=null, dragTY=0, dragMoved=0;
-  fpill.addEventListener('pointerdown', e => {
+  function goFull() { detent = 'full'; fsheet.style.transition = ''; setSheetTY(0); clearAlternates(); }
+  function goPeek(reframe) { detent = 'peek'; fsheet.style.transition = ''; setSheetTY(PEEK_TY);
+    if (reframe !== false) frameFlight(720); map.once('moveend', showAlternates); }
+
+  // drag the header (grip + search bar) between detents; pull well past peek to dismiss
+  let dragY=null, dragTY=0, dragMoved=0, dragOnSearch=false;
+  fsHead.addEventListener('pointerdown', e => {
     if (!flightMode) return;
-    if (e.target.closest('#pillLeft') || e.target.closest('#pillRight')) return;
-    dragY = e.clientY; dragTY = sheetTY; dragMoved = 0;
-    fsheet.style.transition = 'none'; fpill.style.transition = 'none';
-    try { fpill.setPointerCapture(e.pointerId); } catch (_) {}
+    dragY = e.clientY; dragTY = sheetTY; dragMoved = 0; dragOnSearch = !!e.target.closest('#fsSearch');
+    fsheet.style.transition = 'none';
+    try { fsHead.setPointerCapture(e.pointerId); } catch (_) {}
   });
-  fpill.addEventListener('pointermove', e => {
+  fsHead.addEventListener('pointermove', e => {
     if (dragY == null) return;
     const dy = e.clientY - dragY; dragMoved = Math.max(dragMoved, Math.abs(dy));
-    setSheet(dragTY + dy);
+    setSheetTY(dragTY + dy);
   });
-  fpill.addEventListener('pointerup', e => {
+  function endHeadDrag() {
     if (dragY == null) return; dragY = null;
-    fsheet.style.transition = ''; fpill.style.transition = '';
-    if (dragMoved < 6) { (sheetTY > 4 ? expandSheet() : collapseSheet()); }     // tap toggles
-    else { (sheetTY > COLLAPSE_DY/2 ? collapseSheet() : expandSheet()); }        // drag snaps
-  });
+    fsheet.style.transition = '';
+    if (dragMoved < 6) {                                       // a tap, not a drag
+      if (dragOnSearch) { closeFlight(); openSearch(); }      // tap the search bar → edit the trip
+      else (sheetTY > PEEK_TY * 0.5 ? goPeek() : goFull());     // tap the grip → toggle
+      return;
+    }
+    if (sheetTY > PEEK_TY + 90) { closeFlight(); return; }    // pulled well below peek → leave flight mode
+    (sheetTY < PEEK_TY * 0.5 ? goFull() : goPeek());            // else snap to the nearer detent
+  }
+  fsHead.addEventListener('pointerup', endHeadDrag);
+  fsHead.addEventListener('pointercancel', endHeadDrag);
 
   // ---- nearby-airport price pills (shown when the sheet is pulled down) ----
   function clearAlternates() { flightAirportMarkers.forEach(m => m.remove()); flightAirportMarkers = []; }
@@ -1740,13 +1775,13 @@ return maplibregl$1;
   }
   function showAlternates() {
     clearAlternates();
-    if (!flightDest || detent !== 'collapsed') return;
+    if (!flightDest || detent !== 'peek') return;
     const W = map.getContainer().clientWidth, H = map.getContainer().clientHeight;
     const placed = [ map.project(SF), map.project([flightDest.lng, flightDest.lat]) ];   // don't crowd the two ends
     for (const [code,lat,lng] of AIRPORTS) {
       if (code === flightDest.code) continue;
       const p = map.project([lng, lat]);
-      if (p.x < 40 || p.x > W - 40 || p.y < 64 || p.y > H - 168) continue;               // on-screen, above the sheet
+      if (p.x < 40 || p.x > W - 40 || p.y < 64 || p.y > H - sheetCover() - 16) continue;     // on-screen, above the sheet
       if (placed.some(q => Math.hypot(q.x - p.x, q.y - p.y) < 104)) continue;            // keep pills from overlapping
       placed.push(p);
       const el = pricePillEl(code, lng, lat, false);
@@ -1761,6 +1796,8 @@ return maplibregl$1;
   function setDest(code, lng, lat) {
     flightDest = { code, lng, lat };
     const city = airName(code, lng, lat);
+    var _de=document.getElementById('fsDest'); if(_de) _de.textContent=city;
+    var _dw=document.getElementById('fsWhen'); if(_dw) _dw.textContent='San Francisco (SFO) → '+code;
     flightInfo = { t1: 'San Francisco → ' + city, t2: 'SFO–' + code + ' · from $' + bestPrice(code, lng, lat) };
     setRoute(null);                                                            // new destination starts as a direct arch
     if (flightEndMarker) flightEndMarker.remove();
@@ -1769,7 +1806,7 @@ return maplibregl$1;
     flightEndMarker.getElement().style.zIndex = '6';
     renderFlights(code, lng, lat); updateSearchBar(); drawArc();
   }
-  function retarget(code, lng, lat) { setDest(code, lng, lat); frameFlight(800); if (detent === 'collapsed') map.once('moveend', showAlternates); }
+  function retarget(code, lng, lat) { setDest(code, lng, lat); frameFlight(800); if (detent === 'peek') map.once('moveend', showAlternates); }
 
   function openFlight(code, lng, lat) {
     if (flightMode) return;
@@ -1780,21 +1817,23 @@ return maplibregl$1;
     SCREEN.classList.remove('airports-visible');
     SCREEN.querySelector('.cards-scroll').style.display = 'none';
     document.querySelectorAll('.dock-btn').forEach(d => d.style.display = 'none');
-    fpill.classList.add('flight');
-    detent = 'expanded'; setSheet(0);
+    pillEl.style.display = 'none';                       // hide the explore search bar
+    sizeSheet();
     setDest(code, lng, lat);
+    detent = 'peek'; fsheet.style.transition = ''; setSheetTY(PEEK_TY);   // open low — ~3 flights showing
     frameFlight(1100);
+    map.once('moveend', showAlternates);
   }
   function closeFlight() {
     if (!flightMode) return;
-    flightMode = false; flightDest = null; sheetTY = 0; detent = 'expanded';
+    flightMode = false; flightDest = null; sheetTY = 0; detent = 'peek';
     clearAlternates(); setRoute(null);
     arcSvg.style.display = 'none'; arcTime.style.display = 'none';
     if (flightEndMarker) { flightEndMarker.remove(); flightEndMarker = null; }
-    fsheet.style.transform = 'translateY(108%)';
-    fpill.style.top = (SCREEN.clientHeight - 152) + 'px'; setTimeout(() => { fpill.classList.remove('flight'); fpill.style.top = ''; }, 540);
+    fsheet.style.transition = ''; fsheet.style.transform = 'translateY(108%)';
     SCREEN.querySelector('.cards-scroll').style.display = '';
     document.querySelectorAll('.dock-btn').forEach(d => d.style.display = '');
+    pillEl.style.display = '';
     updateSearchBar();
     if (preFlight) map.easeTo({ center: preFlight.c, zoom: preFlight.z, duration: 900, essential:true });
     preFlight = null;
@@ -1814,7 +1853,7 @@ return maplibregl$1;
       flightDest = null; if (flightMode) closeFlight();
       viewStack = []; metro = false; localType = null;         // switching modes returns to the top level
       activeVibe = activeVibe || globalVibe;
-      currentSpots = airSpots(activeVibe);
+      currentSpots = spotsFor(activeVibe);
       clearMarkers();                                          // force every pill to rebuild with the new chip + suffix
       if (mode === 'air') restyleAirpins();
       map.easeTo({ center: SF, zoom: MODE_VIEW[mode] || 3.0, offset: [0, 32],
