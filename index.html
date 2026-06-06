@@ -258,6 +258,55 @@
   .pstatus.busy { color:#666; }
   .pstatus.err { color:#c0223e; }
 
+  /* ---- three-tier search accordion (Where / When / Who) ---- */
+  .ssheet { position:absolute; inset:0; z-index:72; display:none; }
+  .ssheet.open { display:block; }
+  #ssheetScrim { position:absolute; inset:0; background:rgba(228,228,231,.6); -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px); }
+  .ss-scroll { position:absolute; inset:50px 0 92px 0; overflow-y:auto; padding:14px 12px 14px; -webkit-overflow-scrolling:touch; }
+  .ss-x { position:absolute; top:54px; right:16px; width:34px; height:34px; border:none; border-radius:50%; background:#fff; box-shadow:0 1px 5px rgba(0,0,0,.18); color:var(--ink); font-size:18px; line-height:1; cursor:pointer; z-index:3; }
+  .ss-card { background:#fff; border-radius:22px; box-shadow:0 3px 12px rgba(0,0,0,.08); margin-bottom:13px; overflow:hidden; }
+  .ss-sum { width:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border:none; background:transparent; cursor:pointer; font:400 15px/1 -apple-system,system-ui,sans-serif; }
+  .ss-sum .lab { color:#717171; }
+  .ss-sum .val { color:var(--ink); font-weight:600; max-width:62%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; }
+  .ss-card.exp .ss-sum { display:none; }
+  .ss-body { display:none; padding:22px 22px 24px; }
+  .ss-card.exp .ss-body { display:block; }
+  .ss-title { margin:0 0 16px; font:700 26px/1.05 -apple-system,system-ui,sans-serif; color:var(--ink); }
+  .ss-search { display:flex; align-items:center; gap:10px; border:1px solid rgba(0,0,0,.16); border-radius:14px; padding:13px 16px; margin-bottom:16px; }
+  .ss-search svg { width:18px; height:18px; color:#717171; flex:0 0 auto; }
+  .ss-search input { border:none; outline:none; width:100%; font:400 15px/1 -apple-system,system-ui,sans-serif; color:var(--ink); background:transparent; }
+  .ss-grouplab { font:600 14px/1 -apple-system,system-ui,sans-serif; color:var(--ink); margin:8px 2px 8px; }
+  .dest { display:flex; align-items:center; gap:14px; padding:9px 2px; cursor:pointer; }
+  .dest .ic { width:48px; height:48px; border-radius:13px; background:#f2f2f4; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .dest .ic svg { width:24px; height:24px; color:#5b6770; }
+  .dest .tx b { display:block; font:600 15px/1.2 -apple-system,system-ui,sans-serif; color:var(--ink); }
+  .dest .tx span { font:400 13px/1.3 -apple-system,system-ui,sans-serif; color:#9aa0a6; }
+  .cal-dow { display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:4px; }
+  .cal-dow span { text-align:center; font:500 12px/1 -apple-system,system-ui,sans-serif; color:#9aa0a6; }
+  .cal-mon { font:700 17px/1 -apple-system,system-ui,sans-serif; color:var(--ink); margin:16px 2px 12px; }
+  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); row-gap:3px; }
+  .cal-day { height:44px; border:none; background:transparent; border-radius:50%; cursor:pointer; font:500 15px/1 -apple-system,system-ui,sans-serif; color:var(--ink); padding:0; }
+  .cal-day.empty { visibility:hidden; }
+  .cal-day.past { color:#cfcfd4; text-decoration:line-through; cursor:default; }
+  .cal-day.inrange { background:#f2f2f4; border-radius:0; }
+  .cal-day.sel { background:var(--ink); color:#fff; }
+  .cal-day.sel.s-start { border-radius:50% 0 0 50%; }
+  .cal-day.sel.s-end { border-radius:0 50% 50% 0; }
+  .cal-day.sel.s-one { border-radius:50%; }
+  .who-row { display:flex; align-items:center; justify-content:space-between; padding:18px 0; border-bottom:1px solid rgba(0,0,0,.08); }
+  .who-row:last-child { border-bottom:none; }
+  .who-row .wt b { display:block; font:600 16px/1.2 -apple-system,system-ui,sans-serif; color:var(--ink); }
+  .who-row .wt span { font:400 13px/1.2 -apple-system,system-ui,sans-serif; color:#9aa0a6; }
+  .stp { display:flex; align-items:center; gap:14px; }
+  .stp button { width:34px; height:34px; border-radius:50%; border:1px solid #c8c8cc; background:#fff; color:#444; font-size:19px; line-height:1; cursor:pointer; padding:0; }
+  .stp button:disabled { opacity:.35; cursor:default; }
+  .stp .n { min-width:18px; text-align:center; font:500 16px/1 -apple-system,system-ui,sans-serif; color:var(--ink); }
+  .ss-foot { position:absolute; left:0; right:0; bottom:0; height:84px; display:flex; align-items:center; justify-content:space-between; padding:0 20px;
+    background:#fff; border-top:1px solid rgba(0,0,0,.08); }
+  .ss-clear { border:none; background:transparent; font:600 15px/1 -apple-system,system-ui,sans-serif; color:var(--ink); text-decoration:underline; cursor:pointer; padding:8px 0; }
+  .ss-go { display:flex; align-items:center; gap:8px; border:none; border-radius:14px; background:#E0265E; color:#fff; padding:14px 22px; font:600 15px/1 -apple-system,system-ui,sans-serif; cursor:pointer; }
+  .ss-go svg { width:18px; height:18px; }
+
   /* itinerary result card */
   .pitin { position:absolute; left:12px; right:12px; bottom:170px; z-index:55; display:none; max-height:42%;
     flex-direction:column; padding:14px 14px 6px; overflow:hidden;
@@ -451,6 +500,43 @@
     </div>
     <div class="pitin" id="pitin"></div>
 
+    <div class="ssheet" id="ssheet">
+      <div id="ssheetScrim"></div>
+      <button class="ss-x" id="ssX" aria-label="close">&times;</button>
+      <div class="ss-scroll">
+        <div class="ss-card exp" id="cWhere">
+          <button class="ss-sum" data-card="where"><span class="lab">Where</span><span class="val" id="sumWhere">I'm flexible</span></button>
+          <div class="ss-body">
+            <div class="ss-title">Where?</div>
+            <div class="ss-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg><input id="destInput" placeholder="Search destinations" autocomplete="off"></div>
+            <div id="destList"></div>
+          </div>
+        </div>
+        <div class="ss-card" id="cWhen">
+          <button class="ss-sum" data-card="when"><span class="lab">When</span><span class="val" id="sumWhen">Add dates</span></button>
+          <div class="ss-body">
+            <div class="ss-title">When?</div>
+            <div class="cal-dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+            <div id="calMonths"></div>
+          </div>
+        </div>
+        <div class="ss-card" id="cWho">
+          <button class="ss-sum" data-card="who"><span class="lab">Who</span><span class="val" id="sumWho">Add guests</span></button>
+          <div class="ss-body">
+            <div class="ss-title">Who?</div>
+            <div class="who-row"><div class="wt"><b>Adults</b><span>Ages 13 or above</span></div><div class="stp" data-g="adults"><button class="dec" aria-label="less">−</button><span class="n">0</span><button class="inc" aria-label="more">+</button></div></div>
+            <div class="who-row"><div class="wt"><b>Children</b><span>Ages 2 – 12</span></div><div class="stp" data-g="children"><button class="dec" aria-label="less">−</button><span class="n">0</span><button class="inc" aria-label="more">+</button></div></div>
+            <div class="who-row"><div class="wt"><b>Infants</b><span>Under 2</span></div><div class="stp" data-g="infants"><button class="dec" aria-label="less">−</button><span class="n">0</span><button class="inc" aria-label="more">+</button></div></div>
+            <div class="who-row"><div class="wt"><b>Pets</b><span>Service animals welcome</span></div><div class="stp" data-g="pets"><button class="dec" aria-label="less">−</button><span class="n">0</span><button class="inc" aria-label="more">+</button></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="ss-foot">
+        <button class="ss-clear" id="ssClear">Clear all</button>
+        <button class="ss-go" id="ssGo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>Search</button>
+      </div>
+    </div>
+
     <div class="dock-btn d1 on" data-mode="air"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g clip-path="url(#clip0_3512_312941)">
 <path d="M7.912 0.0025C7.53005 0.0249462 7.17112 0.192497 6.90864 0.47087C6.64616 0.749243 6.49998 1.11739 6.5 1.5V5.7805L0.5 9.21V11.1185L6.5 9.8325V11.8985L4.5 13.2325V15.1935L8 14.027L11.5 15.1935V13.2325L9.5 11.8985V9.8325L15.5 11.1185V9.21L9.5 5.781V1.5C9.5 1.10218 9.34196 0.720644 9.06066 0.43934C8.77936 0.158035 8.39782 0 8 0L7.912 0.0025Z" fill="currentColor"/>
@@ -552,6 +638,9 @@ return maplibregl$1;
   const SF = [-122.4194, 37.7749];   // [lng, lat]
   const SCREEN = document.querySelector('.screen');
   let flightMode = false, preFlight = null, flightInfo = {}, flightEndMarker = null;
+  // Trip context collected by the Where/When/Who search accordion — the keystone the rest of the
+  // build (real prices, route drawing, checkout) will read. Null until the user runs a search.
+  let trip = { dest:null, destLL:null, start:null, end:null, adults:0, children:0, infants:0, pets:0 };
   let flightDest = null, flightAirportMarkers = [], sheetTY = 0;
   let routeVia = null, viaMarker = null, curFlights = [], detent = 'expanded';
   const COLLAPSE_DY = 408;   // how far the flight sheet drops to its collapsed (map-revealing) detent
@@ -1489,6 +1578,10 @@ return maplibregl$1;
       const t = nearestTown(map.getCenter());
       pillT1.textContent = (t ? t.n : 'This') + ' area';
       pillT2.textContent = 'a week in October';
+    } else if (trip.dest) {
+      pillT1.textContent = trip.dest;
+      const wn = tripWhenText(), wo = tripWhoText();
+      pillT2.textContent = (wn || 'Any week') + ' · ' + (wo || 'Any guests');
     } else {
       pillT1.textContent = 'Where to?';
       pillT2.textContent = 'Anywhere · Any week';
@@ -1785,6 +1878,167 @@ return maplibregl$1;
   document.getElementById('psheetScrim').addEventListener('click', closePlanner);
   document.getElementById('pclose').addEventListener('click', closePlanner);
   document.querySelectorAll('.pchip').forEach(c => c.addEventListener('click', () => { pq.value = c.textContent; pq.focus(); }));
+
+  // ================= three-tier search accordion (Where / When / Who) =================
+  const MN  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const MN3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const SS_IC = {
+    pin:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>',
+    near: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg>',
+    home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z"/></svg>',
+    cabin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12l8-6 8 6M6 11v8h12v-8M3 19h18"/></svg>',
+    gate: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h16M6 8v11M18 8v11M3 5c3 1.4 15 1.4 18 0"/></svg>'
+  };
+  const SS_RECENT = [
+    { n:'Sea Ranch', s:'Jul 15 – 22', ll:[-123.46,38.71], ic:'cabin' },
+    { n:'Tokyo', s:'Jun 16 – 23', ll:[139.69,35.68], ic:'gate' },
+    { n:'San Francisco', s:'Jun 11 – 18', ll:[-122.42,37.77], ic:'pin' }
+  ];
+  const SS_SUGGEST = [
+    { n:'Nearby', s:"Find what's around you", ll:[-122.27,37.80], ic:'near' },
+    { n:'Palm Springs, CA', s:'Because you travel here often', ll:[-116.54,33.83], ic:'home' },
+    { n:'New York', s:'Trending with travelers', ll:[-73.97,40.78], ic:'pin' },
+    { n:'Banff, Canada', s:'Great in summer', ll:[-115.57,51.18], ic:'pin' }
+  ];
+
+  const ssheet = document.getElementById('ssheet');
+  const destList = document.getElementById('destList');
+  const destInput = document.getElementById('destInput');
+  const calMonths = document.getElementById('calMonths');
+
+  function tripWhenText() {
+    if (!trip.start) return '';
+    const s = new Date(trip.start); let r = MN3[s.getMonth()] + ' ' + s.getDate();
+    if (trip.end) { const e = new Date(trip.end); r += ' – ' + (e.getMonth() === s.getMonth() ? e.getDate() : MN3[e.getMonth()] + ' ' + e.getDate()); }
+    return r;
+  }
+  function tripWhoText() {
+    const g = trip.adults + trip.children; if (!g) return '';
+    let r = g + ' guest' + (g > 1 ? 's' : '');
+    if (trip.infants) r += ', ' + trip.infants + ' infant' + (trip.infants > 1 ? 's' : '');
+    if (trip.pets) r += ', ' + trip.pets + ' pet' + (trip.pets > 1 ? 's' : '');
+    return r;
+  }
+
+  function destRow(d, i, grp) {
+    return '<div class="dest" data-grp="' + grp + '" data-i="' + i + '"><div class="ic">' + (SS_IC[d.ic] || SS_IC.pin) +
+      '</div><div class="tx"><b>' + esc(d.n) + '</b><span>' + esc(d.s) + '</span></div></div>';
+  }
+  function renderDests() {
+    const q = (destInput.value || '').trim().toLowerCase();
+    if (q) {
+      const hits = SS_RECENT.map((d,i)=>[d,i,'r']).concat(SS_SUGGEST.map((d,i)=>[d,i,'s']))
+        .filter(x => x[0].n.toLowerCase().includes(q));
+      destList.innerHTML = hits.length ? hits.map(x => destRow(x[0], x[1], x[2])).join('')
+        : '<div class="ss-grouplab" style="color:#9aa0a6;font-weight:400">No matches — try another place</div>';
+      return;
+    }
+    destList.innerHTML = '<div class="ss-grouplab">Recent searches</div>' + SS_RECENT.map((d,i)=>destRow(d,i,'r')).join('') +
+      '<div class="ss-grouplab" style="margin-top:14px">Suggested destinations</div>' + SS_SUGGEST.map((d,i)=>destRow(d,i,'s')).join('');
+  }
+  destInput.addEventListener('input', renderDests);
+  destList.addEventListener('click', e => {
+    const row = e.target.closest('.dest'); if (!row) return;
+    const d = (row.dataset.grp === 'r' ? SS_RECENT : SS_SUGGEST)[+row.dataset.i];
+    trip.dest = d.n; trip.destLL = d.ll;
+    document.getElementById('sumWhere').textContent = d.n;
+    destInput.value = d.n;
+    expandCard('when');
+  });
+
+  function buildCalendar() {
+    const today = new Date(); today.setHours(0,0,0,0);
+    let y = today.getFullYear(), m = today.getMonth(), html = '';
+    for (let mi = 0; mi < 5; mi++) {
+      const first = new Date(y, m + mi, 1), yy = first.getFullYear(), mm = first.getMonth();
+      const days = new Date(yy, mm + 1, 0).getDate(), lead = first.getDay();
+      html += '<div class="cal-mon">' + MN[mm] + ' ' + yy + '</div><div class="cal-grid">';
+      for (let i = 0; i < lead; i++) html += '<div class="cal-day empty"></div>';
+      for (let d = 1; d <= days; d++) {
+        const dt = new Date(yy, mm, d), past = dt < today;
+        html += '<button class="cal-day' + (past ? ' past' : '') + '" data-t="' + dt.getTime() + '"' + (past ? ' disabled' : '') + '>' + d + '</button>';
+      }
+      html += '</div>';
+    }
+    calMonths.innerHTML = html;
+    paintRange();
+  }
+  function paintRange() {
+    calMonths.querySelectorAll('.cal-day').forEach(b => {
+      b.classList.remove('sel','inrange','s-start','s-end','s-one');
+      if (b.classList.contains('empty') || b.classList.contains('past')) return;
+      const t = +b.dataset.t;
+      if (trip.start && trip.end) {
+        if (t === trip.start) { b.classList.add('sel','s-start'); }
+        else if (t === trip.end) { b.classList.add('sel','s-end'); }
+        else if (t > trip.start && t < trip.end) { b.classList.add('inrange'); }
+      } else if (trip.start && t === trip.start) { b.classList.add('sel','s-one'); }
+    });
+  }
+  calMonths.addEventListener('click', e => {
+    const b = e.target.closest('.cal-day'); if (!b || b.classList.contains('past') || b.classList.contains('empty')) return;
+    const t = +b.dataset.t;
+    if (trip.start == null || trip.end != null) { trip.start = t; trip.end = null; }
+    else if (t < trip.start) { trip.start = t; }
+    else if (t === trip.start) { /* ignore same-day */ }
+    else { trip.end = t; }
+    paintRange();
+    document.getElementById('sumWhen').textContent = tripWhenText() || 'Add dates';
+    if (trip.start && trip.end) setTimeout(() => expandCard('who'), 220);
+  });
+
+  document.querySelectorAll('.stp').forEach(stp => {
+    const g = stp.dataset.g, nEl = stp.querySelector('.n'), dec = stp.querySelector('.dec'), inc = stp.querySelector('.inc');
+    const sync = () => { nEl.textContent = trip[g]; dec.disabled = trip[g] <= 0; document.getElementById('sumWho').textContent = tripWhoText() || 'Add guests'; };
+    inc.addEventListener('click', () => { trip[g] = Math.min(16, trip[g] + 1); sync(); });
+    dec.addEventListener('click', () => { trip[g] = Math.max(0, trip[g] - 1); sync(); });
+    sync();
+  });
+
+  function expandCard(which) {
+    ['where','when','who'].forEach(k => {
+      document.getElementById('c' + k.charAt(0).toUpperCase() + k.slice(1)).classList.toggle('exp', k === which);
+    });
+    if (which === 'where') setTimeout(() => destInput.focus(), 80);
+  }
+  document.querySelectorAll('.ss-sum').forEach(s => s.addEventListener('click', () => expandCard(s.dataset.card)));
+
+  function openSearch() {
+    if (flightMode) return;
+    buildCalendar();
+    renderDests();
+    document.getElementById('sumWhere').textContent = trip.dest || "I'm flexible";
+    document.getElementById('sumWhen').textContent = tripWhenText() || 'Add dates';
+    document.getElementById('sumWho').textContent = tripWhoText() || 'Add guests';
+    expandCard('where');
+    ssheet.classList.add('open');
+  }
+  function closeSearch() { ssheet.classList.remove('open'); }
+  document.getElementById('ssheetScrim').addEventListener('click', closeSearch);
+  document.getElementById('ssX').addEventListener('click', closeSearch);
+  document.getElementById('ssClear').addEventListener('click', () => {
+    trip = { dest:null, destLL:null, start:null, end:null, adults:0, children:0, infants:0, pets:0 };
+    document.querySelectorAll('.stp .n').forEach(n => n.textContent = '0');
+    document.querySelectorAll('.stp .dec').forEach(d => d.disabled = true);
+    destInput.value = '';
+    buildCalendar(); renderDests();
+    document.getElementById('sumWhere').textContent = "I'm flexible";
+    document.getElementById('sumWhen').textContent = 'Add dates';
+    document.getElementById('sumWho').textContent = 'Add guests';
+    expandCard('where');
+  });
+  document.getElementById('ssGo').addEventListener('click', () => {
+    closeSearch();
+    updateSearchBar();
+    if (trip.destLL) {
+      stopIntro();
+      map.easeTo({ center: trip.destLL, zoom: 9.7, offset:[0,32], duration: 1400, easing: t => 1 - Math.pow(1 - t, 3), essential: true });
+    }
+  });
+
+  // Tapping the search bar (outside flight mode, and not the side buttons) opens the accordion.
+  pillMid.addEventListener('click', () => { if (!flightMode) openSearch(); });
+
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
 
