@@ -510,11 +510,14 @@
 
   /* painterly arch overlay (drawn in screen space, recomputed each frame) */
   .arc-svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; overflow:visible; }
-  /* the route is a dashed line that perpetually marches toward the destination. A soft white halo
-     keeps the dark dashes legible over both the bright flat map and the dark globe/space behind it. */
-  .arc-line { fill:none; stroke:#141414; stroke-width:3; stroke-linecap:round;
-    stroke-dasharray:7 8; animation:dashflow .8s linear infinite;
-    filter:drop-shadow(0 0 2.5px rgba(255,255,255,.9)) drop-shadow(0 3px 3px rgba(10,16,30,.28)); }
+  /* the route is a dashed line that marches slowly toward the destination. A soft white halo keeps the
+     dark dashes legible over both the bright flat map and the dark space behind it; the blurred
+     shadow line beneath grounds it so the arc reads as floating above the map. */
+  .arc-shadowline { fill:none; stroke:rgba(10,16,30,.22); stroke-width:5; stroke-linecap:round;
+    filter:blur(3px); transform:translateY(6px); }
+  .arc-line { fill:none; stroke:#141414; stroke-width:3; stroke-linecap:butt;
+    stroke-dasharray:7 8; animation:dashflow 2.4s linear infinite;
+    filter:drop-shadow(0 0 2.2px rgba(255,255,255,.9)); }
   @keyframes dashflow { to { stroke-dashoffset:-15; } }   /* dash(7)+gap(8)=15 → seamless loop toward dest */
   .arc-plane { position:absolute; left:0; top:0; z-index:5; pointer-events:none; margin:-19px 0 0 -19px;
     width:38px; height:38px; display:flex; align-items:center; justify-content:center; will-change:transform; }
@@ -522,10 +525,6 @@
     box-shadow:0 7px 18px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.18);
     display:flex; align-items:center; justify-content:center; }
   .arc-plane .pl svg { width:19px; height:19px; }   /* glyph points up; JS rotates the whole badge to travel */
-  .arc-ring { position:absolute; left:0; top:0; z-index:4; pointer-events:none; width:14px; height:14px;
-    border-radius:50%; border:2.5px solid var(--ink); transform:translate(-50%,-50%); opacity:0; }
-  .arc-ring.go { animation:ringPulse .72s var(--ease-out) forwards; }
-  @keyframes ringPulse { 0%{ width:16px; height:16px; opacity:.55; } 100%{ width:150px; height:150px; opacity:0; } }
   @keyframes destArrive { 0%{ transform:scale(1); } 32%{ transform:scale(1.16); } 66%{ transform:scale(.97); } 100%{ transform:scale(1); } }
   .fa-pop.arrive { animation:destArrive .52s var(--ease-spring) both; }
   .arc-time { position:absolute; left:0; top:0; z-index:4; pointer-events:none;
@@ -538,13 +537,19 @@
   .viapin .vd { width:11px; height:11px; border-radius:50%; background:#141414; border:2.5px solid #fff; box-shadow:0 2px 5px rgba(0,0,0,.3); }
   .viapin .vl { margin-top:3px; font:700 10px/1 var(--cereal); color:#141414; -webkit-text-stroke:3px #fff; paint-order:stroke fill; white-space:nowrap; }
 
-  /* flight destination pill — just the city name + airport code, no icon, no outline */
+  /* flight destination pill — city name + airport code, with a downward pointer onto the route's end */
   .fa-pill { display:inline-flex; }                       /* marker root — MapLibre owns its transform */
   .fa-pop {
+    position:relative;
     display:inline-flex; align-items:center; gap:6px; background:#fff; color:#222;
     font:600 14px/1 var(--cereal); padding:7px 14px; border-radius:22px; white-space:nowrap; cursor:pointer;
     box-shadow:0 6px 18px rgba(0,0,0,.16), 0 1px 4px rgba(0,0,0,.10);
-    transform-origin:0% 50%; animation:mkpop .4s cubic-bezier(.22,.9,.3,1.5) both;
+    transform-origin:50% 100%; animation:mkpop .4s cubic-bezier(.22,.9,.3,1.5) both;
+  }
+  .fa-pop::after {
+    content:""; position:absolute; left:50%; bottom:-4px; width:8px; height:8px;
+    background:#fff; transform:translateX(-50%) rotate(45deg);
+    border-right:1px solid rgba(0,0,0,.06); border-bottom:1px solid rgba(0,0,0,.06);
   }
   .fa-pop .fa-name { color:#222; font-weight:700; }
   .fa-pop .fa-code { color:#9b9b9b; font-weight:600; letter-spacing:.3px; }
@@ -1182,14 +1187,13 @@ return maplibregl$1;
   const NS = 'http://www.w3.org/2000/svg';
   const arcSvg = document.createElementNS(NS, 'svg');
   arcSvg.setAttribute('class', 'arc-svg'); arcSvg.style.display = 'none';
+  const arcShadow = document.createElementNS(NS, 'path'); arcShadow.setAttribute('class', 'arc-shadowline');
   const arcLine = document.createElementNS(NS, 'path'); arcLine.setAttribute('class', 'arc-line');
-  arcSvg.appendChild(arcLine);
+  arcSvg.appendChild(arcShadow); arcSvg.appendChild(arcLine);
   map.getContainer().appendChild(arcSvg);
   const arcPlane = document.createElement('div'); arcPlane.className = 'arc-plane';
   arcPlane.innerHTML = '<div class="pl">' + PLANE_SVG + '</div>'; arcPlane.style.display = 'none';
   map.getContainer().appendChild(arcPlane);
-  const arcRing = document.createElement('div'); arcRing.className = 'arc-ring'; arcRing.style.display = 'none';
-  map.getContainer().appendChild(arcRing);
   const arcTime = document.createElement('div'); arcTime.className = 'arc-time'; arcTime.style.display = 'none';
   map.getContainer().appendChild(arcTime);
   function setArcTimeText(s) { arcTime.innerHTML = CLOCK_SVG + '<span>' + s + '</span>'; }
@@ -1256,7 +1260,7 @@ return maplibregl$1;
     arcSvg.style.display = '';
     const legs = arcLegs();
     const { d, apex } = routePath(legs, Math.max(0.0001, arcReveal));
-    arcLine.setAttribute('d', d);
+    arcLine.setAttribute('d', d); arcShadow.setAttribute('d', d);
     // the travelling plane rides the leading edge
     if (planeT >= 0) {
       const s = sampleRoute(legs, Math.min(1, planeT)), ang = Math.atan2(s.tan.y, s.tan.x) * 180 / Math.PI + 90;
@@ -1292,10 +1296,6 @@ return maplibregl$1;
   function arrivePulse() {
     const pop = flightEndMarker && flightEndMarker.getElement().querySelector('.fa-pop');
     if (pop) { pop.classList.remove('arrive'); void pop.offsetWidth; pop.classList.add('arrive'); }
-    const pE = map.project([flightDest.lng, flightDest.lat]);
-    arcRing.style.left = pE.x + 'px'; arcRing.style.top = pE.y + 'px';
-    arcRing.style.display = ''; arcRing.classList.remove('go'); void arcRing.offsetWidth; arcRing.classList.add('go');
-    clearTimeout(arrivePulse._t); arrivePulse._t = setTimeout(() => { arcRing.style.display = 'none'; }, 760);
   }
   // Tap the avatar (or its off-screen edge indicator) to return to the exact starting view:
   // SF centred at the initial zoom, flights/air mode, with any drill-in or flight sheet cleared.
@@ -2230,6 +2230,7 @@ return maplibregl$1;
   function pad2(n) { return (n<10?'0':'') + n; }
   function fmtClock(mins) { let h=Math.floor(mins/60)%24, m=mins%60; const ap=h<12?'AM':'PM'; let hh=h%12; if(!hh)hh=12; return hh+':'+pad2(m)+' '+ap; }
   function fmtDurShort(mins) { const h=Math.floor(mins/60), m=mins%60; return (h?h+'h':'') + (h&&m?' ':'') + (m?m+'m':(h?'':'0m')); }
+  function fmtHrs(mins) { const h = Math.round(mins/30)/2; return h % 1 === 0 ? h.toFixed(0) : h.toFixed(1); }   // nearest ½ hr, no minutes
   // pick a sensible connecting hub between SF and the destination for layover flights
   const HUBS = [['DEN',39.856,-104.673],['LAX',33.942,-118.408],['PHX',33.434,-112.012],['LAS',36.084,-115.154],['SEA',47.450,-122.309],['ORD',41.978,-87.905],['ATL',33.640,-84.427]];
   function pickVia(destCode, dLng, dLat) {
@@ -2258,7 +2259,7 @@ return maplibregl$1;
   function renderFlights(code, lng, lat) {
     curFlights = mockFlights(code, lng, lat);
     const durs = curFlights.map(f => f.durMins);
-    setArcTimeText(fmtDurShort(Math.min(...durs)) + ' – ' + fmtDurShort(Math.max(...durs)));
+    setArcTimeText(fmtHrs(Math.min(...durs)) + ' – ' + fmtHrs(Math.max(...durs)) + ' hrs');
     document.getElementById('fsSub').innerHTML =
       '<span>Departing today · 1 adult</span><span class="price-h">from $' + Math.min(...curFlights.map(f=>f.price)) + '</span>';
     document.getElementById('fsList').innerHTML = curFlights.map((f,i) =>
@@ -2277,7 +2278,7 @@ return maplibregl$1;
     row.classList.add('sel');
     arcLift = arcReveal = 0; planeT = -1;                      // collapse, then redraw the chosen routing
     setRoute(f.via);
-    setArcTimeText(fmtDurShort(f.durMins));
+    setArcTimeText(fmtHrs(f.durMins) + ' hrs');
     playFlightReveal(820);                                     // plane re-flies the picked route (bends through any layover)
     frameFlight(700);                                          // bring the layover hub into frame too
     if (detent === 'peek') map.once('moveend', showAlternates);
@@ -2390,7 +2391,7 @@ return maplibregl$1;
     setRoute(null);                                                            // new destination starts as a direct arch
     if (flightEndMarker) flightEndMarker.remove();
     const el = pricePillEl(code, lng, lat, true);                              // destination = the active price pill
-    flightEndMarker = new maplibregl.Marker({ element: el, anchor:'left', occludedOpacity:0 }).setLngLat([lng,lat]).addTo(map);
+    flightEndMarker = new maplibregl.Marker({ element: el, anchor:'bottom', occludedOpacity:0 }).setLngLat([lng,lat]).addTo(map);
     flightEndMarker.getElement().style.zIndex = '6';
     renderFlights(code, lng, lat); updateSearchBar(); drawArc();
   }
@@ -2423,7 +2424,7 @@ return maplibregl$1;
     clearAlternates(); setRoute(null);
     cancelAnimationFrame(arcRAF); arcLift = 1; arcReveal = 1; planeT = -1;
     arcSvg.style.display = 'none'; arcTime.style.display = 'none';
-    arcPlane.style.display = 'none'; arcRing.style.display = 'none';
+    arcPlane.style.display = 'none';
     if (flightEndMarker) { flightEndMarker.remove(); flightEndMarker = null; }
     fsheet.style.transition = ''; fsheet.style.transform = 'translateY(108%)';
     SCREEN.querySelector('.cards-scroll').style.display = '';
