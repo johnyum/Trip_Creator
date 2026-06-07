@@ -1815,6 +1815,11 @@ return maplibregl$1;
       {id:'leftbank',label:'Left Bank',icon:'gem',grad:G.d,zoom:13,spots:[['Latin Quarter',48.8499,2.3470],['Saint-Germain',48.8540,2.3340],['Montparnasse',48.8421,2.3220],['Invalides',48.8566,2.3127],['Jardin du Luxembourg',48.8462,2.3372]]},
       {id:'foodieparis',label:'Foodie',icon:'food',grad:G.c,zoom:13,spots:[['Rue Montorgueil',48.8645,2.3470],['Canal Saint-Martin',48.8709,2.3674],['Rue Cler',48.8556,2.3060],['Marché Bastille',48.8530,2.3690],['Rue Mouffetard',48.8418,2.3494]]},
       {id:'chic',label:'Chic',icon:'star',grad:G.e,zoom:13,spots:[['Avenue Montaigne',48.8662,2.3050],['Place Vendôme',48.8675,2.3295],['Rue Saint-Honoré',48.8686,2.3289],['Trocadéro',48.8616,2.2890],['Champs-Élysées',48.8698,2.3078]]}],
+    dubai:[
+      {id:'downtown',label:'Downtown',icon:'town',grad:G.a,zoom:13,spots:[['Burj Khalifa',25.197,55.274],['Dubai Mall',25.198,55.279],['DIFC',25.214,55.281],['City Walk',25.205,55.262],['Business Bay',25.186,55.262],['Dubai Opera',25.194,55.273]]},
+      {id:'marina',label:'Marina & JBR',icon:'beach',grad:G.f,zoom:13,spots:[['Dubai Marina',25.080,55.140],['JBR',25.078,55.134],['Bluewaters',25.078,55.123],['Marina Walk',25.083,55.143],['Pier 7',25.087,55.144]]},
+      {id:'palm',label:'Palm Jumeirah',icon:'wave',grad:G.c,zoom:13,spots:[['Atlantis',25.130,55.117],['The Pointe',25.131,55.118],['Palm West Beach',25.107,55.117],['Nakheel Mall',25.113,55.139],['Palm Trunk',25.112,55.139]]},
+      {id:'olddubai',label:'Old Dubai',icon:'star',grad:G.b,zoom:13,spots:[['Al Fahidi',25.264,55.300],['Dubai Creek',25.262,55.300],['Gold Souk',25.271,55.300],['Spice Souk',25.268,55.301],['Deira',25.271,55.309],['Bur Dubai',25.263,55.297]]}],
     default:[
       {id:'downtown',label:'Near Downtown',icon:'town',grad:G.a,sat:['Downtown','City Center','Main Street','Old Town','Central Plaza']},
       {id:'hidden',label:'Hidden Gems',icon:'gem',grad:G.d,sat:['Backstreet','Local Favorite','Tucked Away','Secret Spot','Quiet Corner']},
@@ -1872,12 +1877,35 @@ return maplibregl$1;
       ['Montmartre',48.8867,2.3431],['Belleville',48.8721,2.3776],['Le Marais',48.8590,2.3580],
       ['Latin Quarter',48.8499,2.3470],['Canal Saint-Martin',48.8709,2.3674]]}
   ];
+  // Dubai — Vibe Pill v2: the region tier is traveler DECISION LENSES (what a place is good for),
+  // not identity labels. Each lens resolves to the neighbourhoods that answer it. The city-core
+  // "Dubai" pin is the first spot of the first lens, so tapping it drills into the hoods.
+  const REGION_DUBAI = [
+    {id:'mustsee',label:'Must-see',icon:'star',grad:G.e,spots:[
+      ['Dubai',25.197,55.274],['Old Dubai',25.271,55.309],
+      ['Al Fahidi',25.264,55.300],['Palm Jumeirah',25.112,55.139]]},
+    {id:'walkable',label:'Walkable',icon:'town',grad:G.a,spots:[
+      ['Downtown',25.197,55.274],['Dubai Marina',25.080,55.140],
+      ['JBR',25.078,55.134],['City Walk',25.205,55.262]]},
+    {id:'food',label:'Best food',icon:'food',grad:G.c,spots:[
+      ['Deira',25.271,55.309],['DIFC',25.214,55.281],
+      ['Downtown',25.197,55.274],['JBR',25.078,55.134]]},
+    {id:'family',label:'Family',icon:'sun',grad:G.b,spots:[
+      ['Dubai Marina',25.080,55.140],['JBR',25.078,55.134],['Palm Jumeirah',25.112,55.139]]},
+    {id:'shopping',label:'Shopping',icon:'gem',grad:G.d,spots:[
+      ['Dubai Mall',25.198,55.279],['Mall of the Emirates',25.118,55.200],['Gold Souk',25.271,55.300]]},
+    {id:'nightlife',label:'Nightlife',icon:'bar',grad:G.f,spots:[
+      ['DIFC',25.214,55.281],['Dubai Marina',25.080,55.140],['Downtown',25.197,55.274]]},
+    {id:'quiet',label:'Quiet / Residential',icon:'view',grad:G.c,spots:[
+      ['Jumeirah',25.21,55.25],['Arabian Ranches',25.04,55.27]]}
+  ];
   // The registry: a city name → its flight airport [code,lng,lat], its region groups, and the
   // LOCAL_VIBES key for its neighbourhoods. Add a city here and the whole 3-tier flow lights up.
   const CITY_DATA = {
     'Los Angeles': { air:['LAX', -118.408, 33.942], region:REGION_LA, hoodKey:'la' },
     'New York':    { air:['JFK', -73.778, 40.641],  region:REGION_NYC, hoodKey:'nyc' },
-    'Paris':       { air:['CDG', 2.548, 49.010],    region:REGION_PARIS, hoodKey:'paris' }
+    'Paris':       { air:['CDG', 2.548, 49.010],    region:REGION_PARIS, hoodKey:'paris' },
+    'Dubai':       { air:['DXB', 55.364, 25.253],   region:REGION_DUBAI, hoodKey:'dubai' }
   };
   function regionSpots(id) {
     const rv = (CITY_DATA[regionCity] && CITY_DATA[regionCity].region) || REGION_LA;
@@ -1887,7 +1915,7 @@ return maplibregl$1;
   const TOWNS = [
     ['Whistler',50.12,-122.95,'ski'],['Aspen',39.19,-106.82,'ski'],['Banff',51.18,-115.57,'ski'],['Vail',39.64,-106.37,'ski'],['Lake Tahoe',39.10,-120.03,'ski'],['Queenstown',-45.03,168.66,'ski'],['Chamonix',45.92,6.87,'ski'],
     ['Maui',20.79,-156.33,'beach'],['Cancún',21.16,-86.85,'beach'],['Tulum',20.21,-87.46,'beach'],['Cabo San Lucas',22.89,-109.91,'beach'],['Puerto Vallarta',20.65,-105.22,'beach'],['Bali',-8.41,115.19,'beach'],['Phuket',7.88,98.39,'beach'],['Bora Bora',-16.5,-151.74,'beach'],['Maldives',3.2,73.0,'beach'],['Waikiki',21.28,-157.84,'beach'],
-    ['Los Angeles',34.05,-118.24,'la'],['Paris',48.86,2.35,'paris'],['Tokyo',35.68,139.69,'city'],['New York',40.71,-74.0,'nyc'],['London',51.51,-0.13,'city'],['Rome',41.9,12.5,'city'],['Barcelona',41.39,2.17,'city'],['San Francisco',37.77,-122.42,'city'],['Mexico City',19.43,-99.13,'city'],['Bangkok',13.75,100.5,'city'],['Las Vegas',36.17,-115.14,'city'],
+    ['Los Angeles',34.05,-118.24,'la'],['Paris',48.86,2.35,'paris'],['Dubai',25.20,55.27,'dubai'],['Tokyo',35.68,139.69,'city'],['New York',40.71,-74.0,'nyc'],['London',51.51,-0.13,'city'],['Rome',41.9,12.5,'city'],['Barcelona',41.39,2.17,'city'],['San Francisco',37.77,-122.42,'city'],['Mexico City',19.43,-99.13,'city'],['Bangkok',13.75,100.5,'city'],['Las Vegas',36.17,-115.14,'city'],
     ['Sedona',34.87,-111.76,'desert'],['Palm Springs',33.83,-116.55,'desert'],['Joshua Tree',33.87,-115.90,'desert'],['Moab',38.57,-109.55,'desert'],['Grand Canyon',36.1,-112.11,'desert']
   ];
   function nearestTown(c) {
