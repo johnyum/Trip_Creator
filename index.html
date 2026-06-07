@@ -386,18 +386,28 @@
   /* Medium zoom (a city's region level): the four transport modes step aside — they're about how you
      travel, not relevant once you're composing a trip — and a white-glass "Add a flight" pill takes
      their place. Same height as the mode circles. Toggled via .region-cta / .show in syncChrome. */
+  /* Region level: the 4 transport modes step aside and a vertical stack of glass CTAs
+     takes the bottom of the screen — Book a flight / Book a stay / Find experiences. */
+  .dock.region-cta { flex-direction:column; top:auto; bottom:32px; gap:0; }
   .dock.region-cta .dock-btn { display:none; }
+  .dock-cta {
+    display:none; flex-direction:column; align-items:stretch; gap:9px;
+    width:280px; max-width:calc(100% - 48px); pointer-events:auto;
+  }
+  .dock.region-cta .dock-cta { display:flex; }
   .dock-pill {
-    display:none; pointer-events:auto; align-items:center; justify-content:center;
-    flex:1 1 auto; margin:0 24px; height:48px; padding:0 18px;
-    border-radius:12px; cursor:pointer; white-space:nowrap; color:#fff; font:600 15px/1 var(--cereal);
-    background:#166BD8; border:0;
-    box-shadow:0 6px 16px rgba(22,107,216,.34), inset 0 1px 0 rgba(255,255,255,.20);
+    display:flex; pointer-events:auto; align-items:center; justify-content:center;
+    height:50px; padding:0 18px;
+    border-radius:18px; cursor:pointer; white-space:nowrap; color:var(--ink); font:600 15px/1 var(--cereal);
+    background:var(--glass-bg); -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+    border:0.5px solid var(--glass-border);
+    box-shadow:var(--glass-shadow), var(--glass-sheen);
     transition:transform .14s var(--ease-out);
   }
-  .dock-pill.show { display:flex; }
   .dock-pill:active { transform:scale(.96); }
   .dock-pill svg { width:18px; height:18px; }
+  /* lift the search bar clear of the taller CTA stack while at the region level */
+  .pill.cta-up { top:560px; }
 
   /* Large web view (desktop ≥600px): center the vibes strip and bottom controls.
      The mobile build runs in a 402-wide viewport, so this never triggers on phones. */
@@ -497,7 +507,9 @@
   .stage{ transform:none !important; }
   .screen{ width:100vw !important; height:100vh !important; height:100dvh !important; border-radius:0 !important; box-shadow:none !important; }
   .pill{ top:auto; bottom:96px; }
+  .pill.cta-up{ top:auto; bottom:210px; }
   .dock{ top:auto; bottom:40px; }
+  .dock.region-cta{ bottom:40px; }
   .status{ display:none !important; }
 </style>
 </head>
@@ -616,7 +628,11 @@
 </clipPath>
 </defs>
 </svg></div>
-      <button class="dock-pill" id="bookFlight"><span>Book a flight</span></button>
+      <div class="dock-cta" id="dockCta">
+        <button class="dock-pill" id="bookFlight"><span>Book a flight</span></button>
+        <button class="dock-pill" id="bookStay"><span>Book a stay</span></button>
+        <button class="dock-pill" id="findExp"><span>Find experiences</span></button>
+      </div>
       <div class="dock-btn d2" data-mode="car"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M11.6535 2.25C12.1412 2.25 12.5843 2.53367 12.7885 2.9765L12.8235 3.0615L13.4575 4.75H15.5V6.25H14.0195L14.258 6.885C14.8575 7.38239 15.2174 8.11111 15.248 8.8895L15.25 9V13.5C15.2502 14.0233 14.8468 14.4583 14.325 14.4975L14.25 14.5H13.25C12.7267 14.5002 12.2917 14.0968 12.2525 13.575L12.25 13.5V12.75H3.75V13.5C3.75017 14.0233 3.34684 14.4583 2.825 14.4975L2.75 14.5H1.75C1.22669 14.5002 0.791748 14.0968 0.7525 13.575L0.75 13.5V9C0.75 8.15 1.136 7.3895 1.742 6.885L1.98 6.25H0.5V4.75H2.5425L3.176 3.061C3.34734 2.60439 3.7686 2.28913 4.255 2.2535L4.3465 2.25H11.6535ZM12.75 8.75C12.3358 8.75 12 9.08579 12 9.5C12 9.91421 12.3358 10.25 12.75 10.25C13.1642 10.25 13.5 9.91421 13.5 9.5C13.5 9.08579 13.1642 8.75 12.75 8.75ZM3.25 8.75C2.83579 8.75 2.5 9.08579 2.5 9.5C2.5 9.91421 2.83579 10.25 3.25 10.25C3.66421 10.25 4 9.91421 4 9.5C4 9.08579 3.66421 8.75 3.25 8.75ZM11 8.85H5V10.15H11V8.85ZM11.48 3.75H4.5195L3.582 6.25H12.4175L11.48 3.75Z" fill="currentColor"/>
 </svg></div>
@@ -1578,8 +1594,8 @@ return maplibregl$1;
     const show = region && !flightMode;
     const dock = document.getElementById('dock');
     if (dock) dock.classList.toggle('region-cta', show);   // hide the 4 transport modes at the region level
-    const bf = document.getElementById('bookFlight');
-    if (bf) bf.classList.toggle('show', show);
+    const pill = document.querySelector('.pill');
+    if (pill) pill.classList.toggle('cta-up', show);        // lift the search bar above the taller CTA stack
   }
 
   // This MapLibre build ignores the marker `occludedOpacity` option, so hide trip / plan pins ourselves
@@ -2308,6 +2324,11 @@ return maplibregl$1;
     const a = (CITY_DATA[regionCity] && CITY_DATA[regionCity].air) || ['LAX', -118.408, 33.942];
     openFlight(a[0], a[1], a[2]);
   });
+  // Placeholders for now — visual CTAs; behaviour TBD.
+  const bookStayBtn = document.getElementById('bookStay');
+  if (bookStayBtn) bookStayBtn.addEventListener('click', () => {});
+  const findExpBtn = document.getElementById('findExp');
+  if (findExpBtn) findExpBtn.addEventListener('click', () => {});
   document.querySelectorAll('.dock-btn').forEach(b => {
     b.addEventListener('click', () => {
       const m = b.dataset.mode;
