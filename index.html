@@ -510,11 +510,12 @@
 
   /* painterly arch overlay (drawn in screen space, recomputed each frame) */
   .arc-svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; overflow:visible; }
-  /* the dotted route is real dots: large near the apex (closest to the eye), small where it touches
-     down, each casting a soft shadow on the ground track below — the gap reads as altitude. */
-  .arc-dot   { fill:#141414; transition:fill .18s linear; }
-  .arc-dot.dim { fill:rgba(20,20,20,.15); }          /* not yet reached by the plane */
-  .arc-shade { fill:#0c1424; }                        /* opacity set per-dot in JS */
+  /* the route is a dashed line that perpetually marches toward the destination; stroke colour is set
+     in JS (dark over the bright land map, near-white over the dark globe) so it reads on any backdrop. */
+  .arc-line { fill:none; stroke:#141414; stroke-width:3; stroke-linecap:round;
+    stroke-dasharray:7 8; animation:dashflow .8s linear infinite;
+    filter:drop-shadow(0 4px 3px rgba(10,16,30,.30)); }
+  @keyframes dashflow { to { stroke-dashoffset:-15; } }   /* dash(7)+gap(8)=15 → seamless loop toward dest */
   .arc-plane { position:absolute; left:0; top:0; z-index:5; pointer-events:none; margin:-19px 0 0 -19px;
     width:38px; height:38px; display:flex; align-items:center; justify-content:center; will-change:transform; }
   .arc-plane .pl { width:38px; height:38px; border-radius:50%; background:#141414;
@@ -537,19 +538,16 @@
   .viapin .vd { width:11px; height:11px; border-radius:50%; background:#141414; border:2.5px solid #fff; box-shadow:0 2px 5px rgba(0,0,0,.3); }
   .viapin .vl { margin-top:3px; font:700 10px/1 var(--cereal); color:#141414; -webkit-text-stroke:3px #fff; paint-order:stroke fill; white-space:nowrap; }
 
-  /* airport price pills — red plane badge + city · price, icon sits on the airport point */
+  /* flight price pills — same blue plane chip + city · price as the main-floor city pill */
   .fa-pill { display:inline-flex; }                       /* marker root — MapLibre owns its transform */
   .fa-pop {
-    display:inline-flex; align-items:center; gap:9px; background:#fff; color:#222;
-    font:600 14px/1 var(--cereal); padding:7px 15px 7px 7px; border-radius:22px; white-space:nowrap; cursor:pointer;
+    display:inline-flex; align-items:center; gap:0; background:#fff; color:#222;
+    font:600 14px/1 var(--cereal); padding:6px 14px 6px 9px; border-radius:22px; white-space:nowrap; cursor:pointer;
     box-shadow:0 6px 18px rgba(0,0,0,.16), 0 1px 4px rgba(0,0,0,.10);
     transform-origin:0% 50%; animation:mkpop .4s cubic-bezier(.22,.9,.3,1.5) both;
   }
-  .fa-pop .fa-ico { flex:0 0 auto; width:30px; height:30px; border-radius:50%; background:#FF385C;
-    display:flex; align-items:center; justify-content:center; }
-  .fa-pop .fa-ico svg { width:16px; height:16px; }
   .fa-pop .fa-name { color:#222; font-weight:700; }
-  .fa-pop .fa-sep { color:#9b9b9b; font-weight:600; margin:0 -3px; }
+  .fa-pop .fa-sep { color:#9b9b9b; font-weight:600; margin:0 4px; }
   .fa-pop .fa-price { color:#222; font-weight:600; }
   .fa-pill.active .fa-pop { box-shadow:0 8px 22px rgba(0,0,0,.22), 0 0 0 2px var(--ink); }
   .fs-row.sel { background:#f3f7ff; border-radius:12px; }
@@ -1186,16 +1184,9 @@ return maplibregl$1;
   const NS = 'http://www.w3.org/2000/svg';
   const arcSvg = document.createElementNS(NS, 'svg');
   arcSvg.setAttribute('class', 'arc-svg'); arcSvg.style.display = 'none';
-  const arcShadeG = document.createElementNS(NS, 'g');   // ground-track shadows (drawn first, under the dots)
-  const arcDotG   = document.createElementNS(NS, 'g');   // the lifted dotted arc itself
-  arcSvg.appendChild(arcShadeG); arcSvg.appendChild(arcDotG);
+  const arcLine = document.createElementNS(NS, 'path'); arcLine.setAttribute('class', 'arc-line');
+  arcSvg.appendChild(arcLine);
   map.getContainer().appendChild(arcSvg);
-  // pooled SVG nodes — reused every frame so a live camera move stays cheap
-  const DOTS = 30, dotEls = [], shadeEls = [];
-  for (let i = 0; i < DOTS; i++) {
-    const c = document.createElementNS(NS, 'circle');  c.setAttribute('class', 'arc-dot');   arcDotG.appendChild(c);   dotEls.push(c);
-    const s = document.createElementNS(NS, 'ellipse'); s.setAttribute('class', 'arc-shade'); arcShadeG.appendChild(s); shadeEls.push(s);
-  }
   const arcPlane = document.createElement('div'); arcPlane.className = 'arc-plane';
   arcPlane.innerHTML = '<div class="pl">' + PLANE_SVG + '</div>'; arcPlane.style.display = 'none';
   map.getContainer().appendChild(arcPlane);
@@ -1250,27 +1241,28 @@ return maplibregl$1;
     }
   }
   const lerp = (a,b,t)=>a+(b-a)*t;
+  // build the route as a polyline, drawn only up to `upTo` (0..1) so it grows in during the reveal
+  function routePath(legs, upTo) {
+    const STEPS = 54; let d = '', apex = null, apexHf = -1;
+    for (let i = 0; i <= STEPS; i++) {
+      const g = i / STEPS;
+      if (g > upTo) { const s = sampleRoute(legs, upTo); d += ' L' + s.pt.x.toFixed(1) + ' ' + s.pt.y.toFixed(1); break; }
+      const s = sampleRoute(legs, g);
+      d += (i === 0 ? 'M' : ' L') + s.pt.x.toFixed(1) + ' ' + s.pt.y.toFixed(1);
+      if (s.hf > apexHf) { apexHf = s.hf; apex = s.pt; }
+    }
+    return { d, apex };
+  }
   function drawArc() {
     if (!flightMode || !flightDest) { arcSvg.style.display = 'none'; arcTime.style.display = 'none'; arcPlane.style.display = 'none'; return; }
     arcSvg.style.display = '';
     const legs = arcLegs();
-    let apex = null, apexHf = -1;
-    for (let i = 0; i < DOTS; i++) {
-      const g = DOTS === 1 ? 0 : i/(DOTS-1);
-      const s = sampleRoute(legs, g);
-      const d = dotEls[i], sh = shadeEls[i];
-      const r = lerp(1.5, 4.6, s.hf);                       // small on the ground, fat at the apex
-      d.setAttribute('cx', s.pt.x.toFixed(1)); d.setAttribute('cy', s.pt.y.toFixed(1)); d.setAttribute('r', r.toFixed(2));
-      d.classList.toggle('dim', g > arcReveal + 0.001);     // ahead of the plane = not yet drawn
-      // shadow on the ground track: larger + softer the higher the dot floats above it
-      sh.setAttribute('cx', s.gnd.x.toFixed(1)); sh.setAttribute('cy', s.gnd.y.toFixed(1));
-      sh.setAttribute('rx', lerp(2.0, 8.0, s.hf).toFixed(2)); sh.setAttribute('ry', lerp(1.2, 2.6, s.hf).toFixed(2));
-      sh.style.opacity = (g > arcReveal + 0.001) ? '0' : lerp(0.20, 0.07, s.hf).toFixed(3);
-      if (s.hf > apexHf) { apexHf = s.hf; apex = s.pt; }     // remember the tallest point for the time pill
-    }
-    // the travelling plane
+    const { d, apex } = routePath(legs, Math.max(0.0001, arcReveal));
+    arcLine.setAttribute('d', d);
+    arcLine.style.stroke = _mapBgLight ? '#141414' : '#EAF3FF';   // dark over land, near-white over the dark globe/space
+    // the travelling plane rides the leading edge
     if (planeT >= 0) {
-      const s = sampleRoute(legs, planeT), ang = Math.atan2(s.tan.y, s.tan.x) * 180 / Math.PI + 90;
+      const s = sampleRoute(legs, Math.min(1, planeT)), ang = Math.atan2(s.tan.y, s.tan.x) * 180 / Math.PI + 90;
       arcPlane.style.display = '';
       arcPlane.style.transform = 'translate(' + s.pt.x.toFixed(1) + 'px,' + s.pt.y.toFixed(1) + 'px) rotate(' + ang.toFixed(1) + 'deg)';
     } else arcPlane.style.display = 'none';
@@ -2364,12 +2356,15 @@ return maplibregl$1;
   function airName(code, lng, lat) { if (AIRPORT_CITY[code]) return AIRPORT_CITY[code]; const t = nearestTown({ lng, lat }); return t ? t.n : code; }
   function pricePillEl(code, lng, lat, active) {
     const el = document.createElement('div'); el.className = 'fa-pill' + (active ? ' active' : '');
-    el.innerHTML = '<span class="fa-pop"><span class="fa-ico">' + PLANE_SVG + '</span><span class="fa-name">' + airName(code,lng,lat)
+    el.innerHTML = '<span class="fa-pop"><span class="mk-fly">' + AIR_CHIP + '</span><span class="fa-name">' + airName(code,lng,lat)
       + '</span><span class="fa-sep">·</span><span class="fa-price">$' + bestPrice(code, lng, lat) + '</span></span>';
     return el;
   }
   function showAlternates() {
     clearAlternates();
+    // FLIGHTS LAB: nearby-alternate pins are suppressed so the view stays on the single flight path.
+    // To bring back tap-to-retarget alternates, delete the next line.
+    return;
     if (!flightDest || detent !== 'peek') return;
     const W = map.getContainer().clientWidth, H = map.getContainer().clientHeight;
     const placed = [ map.project(SF), map.project([flightDest.lng, flightDest.lat]) ];   // don't crowd the two ends
