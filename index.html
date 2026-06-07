@@ -1,6 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!--
+  ============================================================================
+  FLIGHTS LAB  —  isolated environment for dialing in FLIGHTS MODE
+  (verbatim copy of the production index.html; merges straight back when done)
+  ============================================================================
+
+  GOAL
+  Polish the SEARCH → FLIGHTS transition: what happens after an airport is
+  tapped. Land the flight sheet, frame the SFO→dest route, and the way the
+  rest of the chrome gets out of the way. Treat everything else as fixed
+  scaffolding — only touch the flights pieces listed below.
+
+  FAST ITERATION
+  Open this file with  #lab  on the end of the URL, e.g.  flights-lab.html#lab
+  That skips the cinematic intro, drops you on the country "search" view, and
+  auto-opens the LAX flight ~0.8s later so you see the transition immediately.
+  Reload to replay. (Plain open, no #lab, behaves exactly like the real app.)
+  openFlight() and closeFlight() are also on window for console poking.
+
+  THE TRANSITION — the code that matters (all in the one big <script>):
+    • openFlight(code,lng,lat)   — THE entry point. Sets flightMode, snapshots
+                                   preFlight, hides explore chrome (cards strip,
+                                   dock buttons, .pill search bar, airport pins),
+                                   sizeSheet(), setDest(), opens the sheet to the
+                                   'peek' detent (PEEK_TY), frameFlight(1100),
+                                   then showAlternates() on moveend.
+    • closeFlight()              — reverses all of the above, easeTo back to
+                                   preFlight, restores chrome.
+    • setDest(code,lng,lat)      — sets flightDest, the end marker, the route
+                                   line + arc, and flightInfo (search-bar text).
+    • frameFlight(dur)           — flies the camera to frame SFO→dest.
+    • showAlternates()/clearAlternates()/retarget() — the nearby alternate
+                                   airports you can tap to re-target the trip.
+    • renderFlights()/mockFlights()/bestPrice() — the flight list rows.
+    • The drag sheet: fsheet (#fsheet), detents 'peek'/'full', PEEK_TY,
+      setSheetTY(), sizeSheet(), the #fsHead drag handlers.
+    • Triggers into openFlight(): airport pins (airpinEl click, ~2 places) and
+      the full-width "Book a flight" button (#bookFlight).
+
+  RELEVANT CSS (top <style>): .fs-sheet/#fsheet, .fs-head, .fs-search, .fs-sub,
+    .fs-list, .fs-row, .fs-buy, .flightend (route endpoint), and .airpin (the
+    tappable airport pills). Search bar text while in flights lives in
+    updateSearchBar()'s `if (flightMode)` branch (reads flightInfo.t1/.t2).
+
+  MERGE BACK  (two kinds of change live in this file — treat them differently)
+  • PAYLOAD — the flights arc + reveal upgrade. This is what you WANT in production:
+      CSS .arc-* (dots/shadows/plane/ring + keyframes); JS archCtrl/bez/bezTan/arcLegs/
+      sampleRoute/drawArc, playFlightReveal/arrivePulse; and the calls added inside
+      openFlight, closeFlight, retarget, and the #fsList row handler. Copy these into
+      index.html (they replace the old flat arc-line/arc-shadow + drawArc).
+  • SCAFFOLDING — lab-only, throw away. The single fenced "FLIGHTS LAB" block at the very
+      end of the main <script>, plus this comment. Deleting that block restores the
+      production boot (map.on('load', start), the cinematic intro) and the "Trips" title;
+      the static <head> is already byte-identical to index.html (the rename is done in JS
+      inside the block). Nothing else diverges.
+  ============================================================================
+-->
+<!-- BUILD: flights-lab — host this at its own GitHub Pages path (e.g. /flights/) so it gets
+     its own home-screen icon, separate from the main app. -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=402, viewport-fit=cover, user-scalable=no, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -90,7 +149,7 @@
   /* gas / transit access call-outs: tighter padding, and they sit BEHIND city pills */
   .airpin.access { z-index:3; }
   .airpin.access .box { padding:4px 5px; gap:5px; }
-  .airpin .box .code { background:rgba(255,255,255,.22); border-radius:5px; padding:2px 5px; font-size:12px; font-weight:600; letter-spacing:0; }
+  .airpin .box .code { background:none; border-radius:0; padding:0; font-size:12px; font-weight:600; letter-spacing:0; }
   /* access call-outs: plain white text on the green/amber box (no chip), matching the 12px pill type */
   .airpin.access .box .code { background:none; border-radius:0; padding:0; font-size:12px; font-weight:600; letter-spacing:0; }
   /* EV supercharger: a perfect circle with a single large lightning bolt, no label */
@@ -386,28 +445,18 @@
   /* Medium zoom (a city's region level): the four transport modes step aside — they're about how you
      travel, not relevant once you're composing a trip — and a white-glass "Add a flight" pill takes
      their place. Same height as the mode circles. Toggled via .region-cta / .show in syncChrome. */
-  /* Region level: the 4 transport modes step aside and a vertical stack of glass CTAs
-     takes the bottom of the screen — Book a flight / Book a stay / Find experiences. */
-  .dock.region-cta { flex-direction:column; top:auto; bottom:32px; gap:0; }
   .dock.region-cta .dock-btn { display:none; }
-  .dock-cta {
-    display:none; flex-direction:column; align-items:stretch; gap:8px;
-    width:calc(100% - 48px); pointer-events:auto;
-  }
-  .dock.region-cta .dock-cta { display:flex; }
   .dock-pill {
-    display:flex; pointer-events:auto; align-items:center; justify-content:center;
-    height:56px; padding:0 18px;
-    border-radius:18px; cursor:pointer; white-space:nowrap; color:var(--ink); font:600 15px/1 var(--cereal);
-    background:var(--glass-bg); -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
-    border:0.5px solid var(--glass-border);
-    box-shadow:var(--glass-shadow), var(--glass-sheen);
+    display:none; pointer-events:auto; align-items:center; justify-content:center;
+    flex:1 1 auto; margin:0 24px; height:48px; padding:0 18px;
+    border-radius:12px; cursor:pointer; white-space:nowrap; color:#fff; font:600 15px/1 var(--cereal);
+    background:#166BD8; border:0;
+    box-shadow:0 6px 16px rgba(22,107,216,.34), inset 0 1px 0 rgba(255,255,255,.20);
     transition:transform .14s var(--ease-out);
   }
+  .dock-pill.show { display:flex; }
   .dock-pill:active { transform:scale(.96); }
   .dock-pill svg { width:18px; height:18px; }
-  /* lift the search bar clear of the taller CTA stack while at the region level */
-  .pill.cta-up { top:560px; }
 
   /* Large web view (desktop ≥600px): center the vibes strip and bottom controls.
      The mobile build runs in a 402-wide viewport, so this never triggers on phones. */
@@ -461,9 +510,24 @@
 
   /* painterly arch overlay (drawn in screen space, recomputed each frame) */
   .arc-svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; overflow:visible; }
-  .arc-shadow { fill:none; stroke:rgba(20,20,20,.22); stroke-width:5.5; stroke-linecap:round;
-    stroke-dasharray:7 7; filter:blur(2px); transform:translateY(5px); }
-  .arc-line { fill:none; stroke:#141414; stroke-width:3.4; stroke-linecap:round; stroke-dasharray:7 7; }
+  /* the route is a dashed line that perpetually marches toward the destination. A soft white halo
+     keeps the dark dashes legible over both the bright flat map and the dark globe/space behind it. */
+  .arc-line { fill:none; stroke:#141414; stroke-width:3; stroke-linecap:round;
+    stroke-dasharray:7 8; animation:dashflow .8s linear infinite;
+    filter:drop-shadow(0 0 2.5px rgba(255,255,255,.9)) drop-shadow(0 3px 3px rgba(10,16,30,.28)); }
+  @keyframes dashflow { to { stroke-dashoffset:-15; } }   /* dash(7)+gap(8)=15 → seamless loop toward dest */
+  .arc-plane { position:absolute; left:0; top:0; z-index:5; pointer-events:none; margin:-19px 0 0 -19px;
+    width:38px; height:38px; display:flex; align-items:center; justify-content:center; will-change:transform; }
+  .arc-plane .pl { width:38px; height:38px; border-radius:50%; background:#141414;
+    box-shadow:0 7px 18px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.18);
+    display:flex; align-items:center; justify-content:center; }
+  .arc-plane .pl svg { width:19px; height:19px; }   /* glyph points up; JS rotates the whole badge to travel */
+  .arc-ring { position:absolute; left:0; top:0; z-index:4; pointer-events:none; width:14px; height:14px;
+    border-radius:50%; border:2.5px solid var(--ink); transform:translate(-50%,-50%); opacity:0; }
+  .arc-ring.go { animation:ringPulse .72s var(--ease-out) forwards; }
+  @keyframes ringPulse { 0%{ width:16px; height:16px; opacity:.55; } 100%{ width:150px; height:150px; opacity:0; } }
+  @keyframes destArrive { 0%{ transform:scale(1); } 32%{ transform:scale(1.16); } 66%{ transform:scale(.97); } 100%{ transform:scale(1); } }
+  .fa-pop.arrive { animation:destArrive .52s var(--ease-spring) both; }
   .arc-time { position:absolute; left:0; top:0; z-index:4; pointer-events:none;
     display:inline-flex; align-items:center; gap:6px; background:#141414; color:#fff;
     font:700 13px/1 var(--cereal); padding:7px 12px; border-radius:16px; white-space:nowrap;
@@ -474,21 +538,16 @@
   .viapin .vd { width:11px; height:11px; border-radius:50%; background:#141414; border:2.5px solid #fff; box-shadow:0 2px 5px rgba(0,0,0,.3); }
   .viapin .vl { margin-top:3px; font:700 10px/1 var(--cereal); color:#141414; -webkit-text-stroke:3px #fff; paint-order:stroke fill; white-space:nowrap; }
 
-  /* airport price pills — red plane badge + city · price, icon sits on the airport point */
+  /* flight destination pill — just the city name + airport code, no icon, no outline */
   .fa-pill { display:inline-flex; }                       /* marker root — MapLibre owns its transform */
   .fa-pop {
-    display:inline-flex; align-items:center; gap:9px; background:#fff; color:#222;
-    font:600 14px/1 var(--cereal); padding:7px 15px 7px 7px; border-radius:22px; white-space:nowrap; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px; background:#fff; color:#222;
+    font:600 14px/1 var(--cereal); padding:7px 14px; border-radius:22px; white-space:nowrap; cursor:pointer;
     box-shadow:0 6px 18px rgba(0,0,0,.16), 0 1px 4px rgba(0,0,0,.10);
     transform-origin:0% 50%; animation:mkpop .4s cubic-bezier(.22,.9,.3,1.5) both;
   }
-  .fa-pop .fa-ico { flex:0 0 auto; width:30px; height:30px; border-radius:50%; background:#FF385C;
-    display:flex; align-items:center; justify-content:center; }
-  .fa-pop .fa-ico svg { width:16px; height:16px; }
   .fa-pop .fa-name { color:#222; font-weight:700; }
-  .fa-pop .fa-sep { color:#9b9b9b; font-weight:600; margin:0 -3px; }
-  .fa-pop .fa-price { color:#222; font-weight:600; }
-  .fa-pill.active .fa-pop { box-shadow:0 8px 22px rgba(0,0,0,.22), 0 0 0 2px var(--ink); }
+  .fa-pop .fa-code { color:#9b9b9b; font-weight:600; letter-spacing:.3px; }
   .fs-row.sel { background:#f3f7ff; border-radius:12px; }
 
   /* Airbnb-style stay price pills — only appear at street/neighbourhood zoom */
@@ -507,9 +566,7 @@
   .stage{ transform:none !important; }
   .screen{ width:100vw !important; height:100vh !important; height:100dvh !important; border-radius:0 !important; box-shadow:none !important; }
   .pill{ top:auto; bottom:96px; }
-  .pill.cta-up{ top:auto; bottom:240px; }
   .dock{ top:auto; bottom:40px; }
-  .dock.region-cta{ bottom:40px; }
   .status{ display:none !important; }
 </style>
 </head>
@@ -628,11 +685,7 @@
 </clipPath>
 </defs>
 </svg></div>
-      <div class="dock-cta" id="dockCta">
-        <button class="dock-pill" id="bookFlight"><span>Book a flight</span></button>
-        <button class="dock-pill" id="bookStay"><span>Book a stay</span></button>
-        <button class="dock-pill" id="findExp"><span>Find experiences</span></button>
-      </div>
+      <button class="dock-pill" id="bookFlight"><span>Book a flight</span></button>
       <div class="dock-btn d2" data-mode="car"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M11.6535 2.25C12.1412 2.25 12.5843 2.53367 12.7885 2.9765L12.8235 3.0615L13.4575 4.75H15.5V6.25H14.0195L14.258 6.885C14.8575 7.38239 15.2174 8.11111 15.248 8.8895L15.25 9V13.5C15.2502 14.0233 14.8468 14.4583 14.325 14.4975L14.25 14.5H13.25C12.7267 14.5002 12.2917 14.0968 12.2525 13.575L12.25 13.5V12.75H3.75V13.5C3.75017 14.0233 3.34684 14.4583 2.825 14.4975L2.75 14.5H1.75C1.22669 14.5002 0.791748 14.0968 0.7525 13.575L0.75 13.5V9C0.75 8.15 1.136 7.3895 1.742 6.885L1.98 6.25H0.5V4.75H2.5425L3.176 3.061C3.34734 2.60439 3.7686 2.28913 4.255 2.2535L4.3465 2.25H11.6535ZM12.75 8.75C12.3358 8.75 12 9.08579 12 9.5C12 9.91421 12.3358 10.25 12.75 10.25C13.1642 10.25 13.5 9.91421 13.5 9.5C13.5 9.08579 13.1642 8.75 12.75 8.75ZM3.25 8.75C2.83579 8.75 2.5 9.08579 2.5 9.5C2.5 9.91421 2.83579 10.25 3.25 10.25C3.66421 10.25 4 9.91421 4 9.5C4 9.08579 3.66421 8.75 3.25 8.75ZM11 8.85H5V10.15H11V8.85ZM11.48 3.75H4.5195L3.582 6.25H12.4175L11.48 3.75Z" fill="currentColor"/>
 </svg></div>
@@ -1126,41 +1179,123 @@ return maplibregl$1;
   // painterly arch overlay — lives inside the map container so HTML markers (z>=4) sit on top of it
   const PLANE_SVG = '<svg viewBox="3 3 18 19" fill="#fff"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>';
   const CLOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
-  const arcSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const NS = 'http://www.w3.org/2000/svg';
+  const arcSvg = document.createElementNS(NS, 'svg');
   arcSvg.setAttribute('class', 'arc-svg'); arcSvg.style.display = 'none';
-  const arcShadow = document.createElementNS('http://www.w3.org/2000/svg', 'path'); arcShadow.setAttribute('class', 'arc-shadow');
-  const arcLine = document.createElementNS('http://www.w3.org/2000/svg', 'path'); arcLine.setAttribute('class', 'arc-line');
-  arcSvg.appendChild(arcShadow); arcSvg.appendChild(arcLine);
+  const arcLine = document.createElementNS(NS, 'path'); arcLine.setAttribute('class', 'arc-line');
+  arcSvg.appendChild(arcLine);
   map.getContainer().appendChild(arcSvg);
+  const arcPlane = document.createElement('div'); arcPlane.className = 'arc-plane';
+  arcPlane.innerHTML = '<div class="pl">' + PLANE_SVG + '</div>'; arcPlane.style.display = 'none';
+  map.getContainer().appendChild(arcPlane);
+  const arcRing = document.createElement('div'); arcRing.className = 'arc-ring'; arcRing.style.display = 'none';
+  map.getContainer().appendChild(arcRing);
   const arcTime = document.createElement('div'); arcTime.className = 'arc-time'; arcTime.style.display = 'none';
   map.getContainer().appendChild(arcTime);
   function setArcTimeText(s) { arcTime.innerHTML = CLOCK_SVG + '<span>' + s + '</span>'; }
-  // control point that lifts a segment into an upward arch
+
+  // animation state — drawArc reads these every frame
+  let arcLift = 1;      // 0..1, how far the arc has sprung up off the ground track
+  let arcReveal = 1;    // 0..1, how much of the route the plane has drawn in so far
+  let planeT = -1;      // 0..1 plane position along the route; <0 hides the plane
+
+  function bez(a, c, b, t) { const u = 1 - t; return { x:u*u*a.x + 2*u*t*c.x + t*t*b.x, y:u*u*a.y + 2*u*t*c.y + t*t*b.y }; }
+  function bezTan(a, c, b, t) { const u = 1 - t; return { x:2*u*(c.x-a.x) + 2*t*(b.x-c.x), y:2*u*(c.y-a.y) + 2*t*(b.y-c.y) }; }
+  // control point that throws a leg up into an arch. The lift leans toward straight-up (not just
+  // perpendicular) so every route reads like a flight-map parabola rather than a tilted bow.
   function archCtrl(a, b) {
     const dx = b.x-a.x, dy = b.y-a.y, len = Math.hypot(dx, dy) || 1;
-    let nx = -dy/len, ny = dx/len; if (ny > 0) { nx = -nx; ny = -ny; }
-    const lift = Math.max(34, Math.min(len*0.26, 210));
-    return { x:(a.x+b.x)/2 + nx*lift, y:(a.y+b.y)/2 + ny*lift };
+    let nx = -dy/len, ny = dx/len; if (ny > 0) { nx = -nx; ny = -ny; }   // perpendicular, biased upward
+    let ux = nx*0.45, uy = ny*0.45 - 0.55, ul = Math.hypot(ux, uy) || 1; // blend 45% normal / 55% up
+    ux /= ul; uy /= ul;
+    const H = Math.max(58, Math.min(len*0.34, 290)) * arcLift;           // apex height (grows on lift-in)
+    const mx = (a.x+b.x)/2, my = (a.y+b.y)/2;
+    return { c:{ x:mx + ux*2*H, y:my + uy*2*H }, H };                    // apex offset = H (quad bez at t=.5)
   }
-  function bez(a, c, b, t) { const u=1-t; return { x:u*u*a.x+2*u*t*c.x+t*t*b.x, y:u*u*a.y+2*u*t*c.y+t*t*b.y }; }
-  const fpt = p => p.x.toFixed(1) + ',' + p.y.toFixed(1);
-  function drawArc() {
-    if (!flightMode || !flightDest) { arcSvg.style.display = 'none'; arcTime.style.display = 'none'; return; }
-    arcSvg.style.display = ''; arcTime.style.display = '';
+  // build the leg list (1 leg, or 2 through a layover) with per-leg control points + chord lengths
+  function arcLegs() {
     const p0 = map.project(SF), pE = map.project([flightDest.lng, flightDest.lat]);
-    let d, mid;
+    const legs = [];
     if (routeVia) {
       const pv = map.project([routeVia.lng, routeVia.lat]);
-      const c1 = archCtrl(p0, pv), c2 = archCtrl(pv, pE);
-      d = 'M' + fpt(p0) + ' Q' + fpt(c1) + ' ' + fpt(pv) + ' Q' + fpt(c2) + ' ' + fpt(pE);
-      mid = bez(p0, c1, pv, 0.5);                       // time pill on the first leg
-    } else {
-      const c = archCtrl(p0, pE);
-      d = 'M' + fpt(p0) + ' Q' + fpt(c) + ' ' + fpt(pE);
-      mid = bez(p0, c, pE, 0.5);
+      legs.push({ a:p0, b:pv }); legs.push({ a:pv, b:pE });
+    } else legs.push({ a:p0, b:pE });
+    for (const L of legs) { const k = archCtrl(L.a, L.b); L.c = k.c; L.H = k.H; L.len = Math.hypot(L.b.x-L.a.x, L.b.y-L.a.y); }
+    return legs;
+  }
+  // sample the whole route at global g in [0,1]; returns the lifted point, its ground point + altitude frac
+  function sampleRoute(legs, g) {
+    const total = legs.reduce((s,L)=>s+L.len,0) || 1;
+    let acc = 0;
+    for (let i = 0; i < legs.length; i++) {
+      const L = legs[i], frac = L.len/total;
+      if (g <= acc + frac || i === legs.length-1) {
+        const lt = frac ? Math.min(1, Math.max(0, (g-acc)/frac)) : 0;
+        const pt = bez(L.a, L.c, L.b, lt), gnd = { x:L.a.x+(L.b.x-L.a.x)*lt, y:L.a.y+(L.b.y-L.a.y)*lt };
+        const sep = Math.hypot(pt.x-gnd.x, pt.y-gnd.y);
+        return { pt, gnd, hf:Math.min(1, sep/(L.H||1)), tan:bezTan(L.a,L.c,L.b,lt) };
+      }
+      acc += frac;
     }
-    arcLine.setAttribute('d', d); arcShadow.setAttribute('d', d);
-    arcTime.style.transform = 'translate(' + mid.x.toFixed(1) + 'px,' + mid.y.toFixed(1) + 'px) translate(-50%,-50%)';
+  }
+  const lerp = (a,b,t)=>a+(b-a)*t;
+  // build the route as a polyline, drawn only up to `upTo` (0..1) so it grows in during the reveal
+  function routePath(legs, upTo) {
+    const STEPS = 54; let d = '', apex = null, apexHf = -1;
+    for (let i = 0; i <= STEPS; i++) {
+      const g = i / STEPS;
+      if (g > upTo) { const s = sampleRoute(legs, upTo); d += ' L' + s.pt.x.toFixed(1) + ' ' + s.pt.y.toFixed(1); break; }
+      const s = sampleRoute(legs, g);
+      d += (i === 0 ? 'M' : ' L') + s.pt.x.toFixed(1) + ' ' + s.pt.y.toFixed(1);
+      if (s.hf > apexHf) { apexHf = s.hf; apex = s.pt; }
+    }
+    return { d, apex };
+  }
+  function drawArc() {
+    if (!flightMode || !flightDest) { arcSvg.style.display = 'none'; arcTime.style.display = 'none'; arcPlane.style.display = 'none'; return; }
+    arcSvg.style.display = '';
+    const legs = arcLegs();
+    const { d, apex } = routePath(legs, Math.max(0.0001, arcReveal));
+    arcLine.setAttribute('d', d);
+    // the travelling plane rides the leading edge
+    if (planeT >= 0) {
+      const s = sampleRoute(legs, Math.min(1, planeT)), ang = Math.atan2(s.tan.y, s.tan.x) * 180 / Math.PI + 90;
+      arcPlane.style.display = '';
+      arcPlane.style.transform = 'translate(' + s.pt.x.toFixed(1) + 'px,' + s.pt.y.toFixed(1) + 'px) rotate(' + ang.toFixed(1) + 'deg)';
+    } else arcPlane.style.display = 'none';
+    // time pill rides the apex, fading in only once the route is mostly drawn
+    if (apex && arcReveal > 0.6) {
+      arcTime.style.display = ''; arcTime.style.opacity = '1';
+      arcTime.style.transform = 'translate(' + apex.x.toFixed(1) + 'px,' + apex.y.toFixed(1) + 'px) translate(-50%,-50%)';
+    } else arcTime.style.display = 'none';
+  }
+
+  // ---- the flight reveal: plane launches from SFO, draws the dotted arc in behind it, lands with a pop ----
+  let arcRAF = 0;
+  function playFlightReveal(dur) {
+    cancelAnimationFrame(arcRAF);
+    dur = dur || 1000;
+    arcLift = 0; arcReveal = 0; planeT = 0;
+    const easeInOut = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3)/2;
+    let t0 = 0;
+    function step(ts) {
+      if (!t0) t0 = ts;
+      const p = Math.min(1, (ts - t0) / dur), e = easeInOut(p);
+      arcLift = Math.min(1, p / 0.45);   // springs up over the first ~half, then holds
+      arcReveal = e; planeT = e;
+      drawArc();
+      if (p < 1) arcRAF = requestAnimationFrame(step);
+      else { planeT = -1; arcReveal = 1; arcLift = 1; drawArc(); arrivePulse(); }
+    }
+    arcRAF = requestAnimationFrame(step);
+  }
+  function arrivePulse() {
+    const pop = flightEndMarker && flightEndMarker.getElement().querySelector('.fa-pop');
+    if (pop) { pop.classList.remove('arrive'); void pop.offsetWidth; pop.classList.add('arrive'); }
+    const pE = map.project([flightDest.lng, flightDest.lat]);
+    arcRing.style.left = pE.x + 'px'; arcRing.style.top = pE.y + 'px';
+    arcRing.style.display = ''; arcRing.classList.remove('go'); void arcRing.offsetWidth; arcRing.classList.add('go');
+    clearTimeout(arrivePulse._t); arrivePulse._t = setTimeout(() => { arcRing.style.display = 'none'; }, 760);
   }
   // Tap the avatar (or its off-screen edge indicator) to return to the exact starting view:
   // SF centred at the initial zoom, flights/air mode, with any drill-in or flight sheet cleared.
@@ -1594,8 +1729,8 @@ return maplibregl$1;
     const show = region && !flightMode;
     const dock = document.getElementById('dock');
     if (dock) dock.classList.toggle('region-cta', show);   // hide the 4 transport modes at the region level
-    const pill = document.querySelector('.pill');
-    if (pill) pill.classList.toggle('cta-up', show);        // lift the search bar above the taller CTA stack
+    const bf = document.getElementById('bookFlight');
+    if (bf) bf.classList.toggle('show', show);
   }
 
   // This MapLibre build ignores the marker `occludedOpacity` option, so hide trip / plan pins ourselves
@@ -1603,6 +1738,7 @@ return maplibregl$1;
   function occludeFarPins() {
     const c = map.getCenter();
     const apply = m => {
+      if (flightMode) { m.getElement().style.visibility = 'hidden'; return; }   // flights view: only the path
       const ll = m.getLngLat();
       m.getElement().style.visibility = angDist(c.lng, c.lat, ll.lng, ll.lat) > 84 ? 'hidden' : '';
     };
@@ -1831,11 +1967,6 @@ return maplibregl$1;
       {id:'leftbank',label:'Left Bank',icon:'gem',grad:G.d,zoom:13,spots:[['Latin Quarter',48.8499,2.3470],['Saint-Germain',48.8540,2.3340],['Montparnasse',48.8421,2.3220],['Invalides',48.8566,2.3127],['Jardin du Luxembourg',48.8462,2.3372]]},
       {id:'foodieparis',label:'Foodie',icon:'food',grad:G.c,zoom:13,spots:[['Rue Montorgueil',48.8645,2.3470],['Canal Saint-Martin',48.8709,2.3674],['Rue Cler',48.8556,2.3060],['Marché Bastille',48.8530,2.3690],['Rue Mouffetard',48.8418,2.3494]]},
       {id:'chic',label:'Chic',icon:'star',grad:G.e,zoom:13,spots:[['Avenue Montaigne',48.8662,2.3050],['Place Vendôme',48.8675,2.3295],['Rue Saint-Honoré',48.8686,2.3289],['Trocadéro',48.8616,2.2890],['Champs-Élysées',48.8698,2.3078]]}],
-    dubai:[
-      {id:'downtown',label:'Downtown',icon:'town',grad:G.a,zoom:13,spots:[['Burj Khalifa',25.197,55.274],['Dubai Mall',25.198,55.279],['DIFC',25.214,55.281],['City Walk',25.205,55.262],['Business Bay',25.186,55.262],['Dubai Opera',25.194,55.273]]},
-      {id:'marina',label:'Marina & JBR',icon:'beach',grad:G.f,zoom:13,spots:[['Dubai Marina',25.080,55.140],['JBR',25.078,55.134],['Bluewaters',25.078,55.123],['Marina Walk',25.083,55.143],['Pier 7',25.087,55.144]]},
-      {id:'palm',label:'Palm Jumeirah',icon:'wave',grad:G.c,zoom:13,spots:[['Atlantis',25.130,55.117],['The Pointe',25.131,55.118],['Palm West Beach',25.107,55.117],['Nakheel Mall',25.113,55.139],['Palm Trunk',25.112,55.139]]},
-      {id:'olddubai',label:'Old Dubai',icon:'star',grad:G.b,zoom:13,spots:[['Al Fahidi',25.264,55.300],['Dubai Creek',25.262,55.300],['Gold Souk',25.271,55.300],['Spice Souk',25.268,55.301],['Deira',25.271,55.309],['Bur Dubai',25.263,55.297]]}],
     default:[
       {id:'downtown',label:'Near Downtown',icon:'town',grad:G.a,sat:['Downtown','City Center','Main Street','Old Town','Central Plaza']},
       {id:'hidden',label:'Hidden Gems',icon:'gem',grad:G.d,sat:['Backstreet','Local Favorite','Tucked Away','Secret Spot','Quiet Corner']},
@@ -1893,35 +2024,12 @@ return maplibregl$1;
       ['Montmartre',48.8867,2.3431],['Belleville',48.8721,2.3776],['Le Marais',48.8590,2.3580],
       ['Latin Quarter',48.8499,2.3470],['Canal Saint-Martin',48.8709,2.3674]]}
   ];
-  // Dubai — Vibe Pill v2: the region tier is traveler DECISION LENSES (what a place is good for),
-  // not identity labels. Each lens resolves to the neighbourhoods that answer it. The city-core
-  // "Dubai" pin is the first spot of the first lens, so tapping it drills into the hoods.
-  const REGION_DUBAI = [
-    {id:'mustsee',label:'Must-see',icon:'star',grad:G.e,spots:[
-      ['Dubai',25.197,55.274],['Old Dubai',25.271,55.309],
-      ['Al Fahidi',25.264,55.300],['Palm Jumeirah',25.112,55.139]]},
-    {id:'walkable',label:'Walkable',icon:'town',grad:G.a,spots:[
-      ['Downtown',25.197,55.274],['Dubai Marina',25.080,55.140],
-      ['JBR',25.078,55.134],['City Walk',25.205,55.262]]},
-    {id:'food',label:'Best food',icon:'food',grad:G.c,spots:[
-      ['Deira',25.271,55.309],['DIFC',25.214,55.281],
-      ['Downtown',25.197,55.274],['JBR',25.078,55.134]]},
-    {id:'family',label:'Family',icon:'sun',grad:G.b,spots:[
-      ['Dubai Marina',25.080,55.140],['JBR',25.078,55.134],['Palm Jumeirah',25.112,55.139]]},
-    {id:'shopping',label:'Shopping',icon:'gem',grad:G.d,spots:[
-      ['Dubai Mall',25.198,55.279],['Mall of the Emirates',25.118,55.200],['Gold Souk',25.271,55.300]]},
-    {id:'nightlife',label:'Nightlife',icon:'bar',grad:G.f,spots:[
-      ['DIFC',25.214,55.281],['Dubai Marina',25.080,55.140],['Downtown',25.197,55.274]]},
-    {id:'quiet',label:'Quiet / Residential',icon:'view',grad:G.c,spots:[
-      ['Jumeirah',25.21,55.25],['Arabian Ranches',25.04,55.27]]}
-  ];
   // The registry: a city name → its flight airport [code,lng,lat], its region groups, and the
   // LOCAL_VIBES key for its neighbourhoods. Add a city here and the whole 3-tier flow lights up.
   const CITY_DATA = {
     'Los Angeles': { air:['LAX', -118.408, 33.942], region:REGION_LA, hoodKey:'la' },
     'New York':    { air:['JFK', -73.778, 40.641],  region:REGION_NYC, hoodKey:'nyc' },
-    'Paris':       { air:['CDG', 2.548, 49.010],    region:REGION_PARIS, hoodKey:'paris' },
-    'Dubai':       { air:['DXB', 55.364, 25.253],   region:REGION_DUBAI, hoodKey:'dubai' }
+    'Paris':       { air:['CDG', 2.548, 49.010],    region:REGION_PARIS, hoodKey:'paris' }
   };
   function regionSpots(id) {
     const rv = (CITY_DATA[regionCity] && CITY_DATA[regionCity].region) || REGION_LA;
@@ -1931,7 +2039,7 @@ return maplibregl$1;
   const TOWNS = [
     ['Whistler',50.12,-122.95,'ski'],['Aspen',39.19,-106.82,'ski'],['Banff',51.18,-115.57,'ski'],['Vail',39.64,-106.37,'ski'],['Lake Tahoe',39.10,-120.03,'ski'],['Queenstown',-45.03,168.66,'ski'],['Chamonix',45.92,6.87,'ski'],
     ['Maui',20.79,-156.33,'beach'],['Cancún',21.16,-86.85,'beach'],['Tulum',20.21,-87.46,'beach'],['Cabo San Lucas',22.89,-109.91,'beach'],['Puerto Vallarta',20.65,-105.22,'beach'],['Bali',-8.41,115.19,'beach'],['Phuket',7.88,98.39,'beach'],['Bora Bora',-16.5,-151.74,'beach'],['Maldives',3.2,73.0,'beach'],['Waikiki',21.28,-157.84,'beach'],
-    ['Los Angeles',34.05,-118.24,'la'],['Paris',48.86,2.35,'paris'],['Dubai',25.20,55.27,'dubai'],['Tokyo',35.68,139.69,'city'],['New York',40.71,-74.0,'nyc'],['London',51.51,-0.13,'city'],['Rome',41.9,12.5,'city'],['Barcelona',41.39,2.17,'city'],['San Francisco',37.77,-122.42,'city'],['Mexico City',19.43,-99.13,'city'],['Bangkok',13.75,100.5,'city'],['Las Vegas',36.17,-115.14,'city'],
+    ['Los Angeles',34.05,-118.24,'la'],['Paris',48.86,2.35,'paris'],['Tokyo',35.68,139.69,'city'],['New York',40.71,-74.0,'nyc'],['London',51.51,-0.13,'city'],['Rome',41.9,12.5,'city'],['Barcelona',41.39,2.17,'city'],['San Francisco',37.77,-122.42,'city'],['Mexico City',19.43,-99.13,'city'],['Bangkok',13.75,100.5,'city'],['Las Vegas',36.17,-115.14,'city'],
     ['Sedona',34.87,-111.76,'desert'],['Palm Springs',33.83,-116.55,'desert'],['Joshua Tree',33.87,-115.90,'desert'],['Moab',38.57,-109.55,'desert'],['Grand Canyon',36.1,-112.11,'desert']
   ];
   function nearestTown(c) {
@@ -2167,8 +2275,10 @@ return maplibregl$1;
     const f = curFlights[+row.dataset.i]; if (!f) return;
     document.querySelectorAll('.fs-row.sel').forEach(r => r.classList.remove('sel'));
     row.classList.add('sel');
+    arcLift = arcReveal = 0; planeT = -1;                      // collapse, then redraw the chosen routing
     setRoute(f.via);
     setArcTimeText(fmtDurShort(f.durMins));
+    playFlightReveal(820);                                     // plane re-flies the picked route (bends through any layover)
     frameFlight(700);                                          // bring the layover hub into frame too
     if (detent === 'peek') map.once('moveend', showAlternates);
   });
@@ -2244,12 +2354,15 @@ return maplibregl$1;
   function airName(code, lng, lat) { if (AIRPORT_CITY[code]) return AIRPORT_CITY[code]; const t = nearestTown({ lng, lat }); return t ? t.n : code; }
   function pricePillEl(code, lng, lat, active) {
     const el = document.createElement('div'); el.className = 'fa-pill' + (active ? ' active' : '');
-    el.innerHTML = '<span class="fa-pop"><span class="fa-ico">' + PLANE_SVG + '</span><span class="fa-name">' + airName(code,lng,lat)
-      + '</span><span class="fa-sep">·</span><span class="fa-price">$' + bestPrice(code, lng, lat) + '</span></span>';
+    el.innerHTML = '<span class="fa-pop"><span class="fa-name">' + airName(code,lng,lat)
+      + '</span><span class="fa-code">' + code + '</span></span>';
     return el;
   }
   function showAlternates() {
     clearAlternates();
+    // FLIGHTS LAB: nearby-alternate pins are suppressed so the view stays on the single flight path.
+    // To bring back tap-to-retarget alternates, delete the next line.
+    return;
     if (!flightDest || detent !== 'peek') return;
     const W = map.getContainer().clientWidth, H = map.getContainer().clientHeight;
     const placed = [ map.project(SF), map.project([flightDest.lng, flightDest.lat]) ];   // don't crowd the two ends
@@ -2271,8 +2384,8 @@ return maplibregl$1;
   function setDest(code, lng, lat) {
     flightDest = { code, lng, lat };
     const city = airName(code, lng, lat);
-    var _de=document.getElementById('fsDest'); if(_de) _de.textContent=city;
-    var _dw=document.getElementById('fsWhen'); if(_dw) _dw.textContent='San Francisco (SFO) → '+code;
+    var _de=document.getElementById('fsDest'); if(_de) _de.textContent='SFO – '+code+' · '+city;
+    var _dw=document.getElementById('fsWhen'); if(_dw) _dw.textContent='A week in October';
     flightInfo = { t1: 'San Francisco → ' + city, t2: 'SFO–' + code + ' · from $' + bestPrice(code, lng, lat) };
     setRoute(null);                                                            // new destination starts as a direct arch
     if (flightEndMarker) flightEndMarker.remove();
@@ -2281,36 +2394,43 @@ return maplibregl$1;
     flightEndMarker.getElement().style.zIndex = '6';
     renderFlights(code, lng, lat); updateSearchBar(); drawArc();
   }
-  function retarget(code, lng, lat) { setDest(code, lng, lat); frameFlight(800); if (detent === 'peek') map.once('moveend', showAlternates); }
+  function retarget(code, lng, lat) { arcLift = arcReveal = 0; planeT = -1; setDest(code, lng, lat); playFlightReveal(900); frameFlight(800); if (detent === 'peek') map.once('moveend', showAlternates); }
 
   function openFlight(code, lng, lat) {
     if (flightMode) return;
     flightMode = true; userTouched = true; introFlight = false;
     preFlight = { c:[map.getCenter().lng, map.getCenter().lat], z: map.getZoom() };
     clearMarkers();
+    occludeFarPins();                                    // hide the visited-trip / plan pins right away
+    if (map.setProjection) map.setProjection({ type: 'mercator' });   // flat world while in flights mode
     for (const m of airportMarkers) m.getElement().style.display = 'none';
     SCREEN.classList.remove('airports-visible');
     SCREEN.querySelector('.cards-scroll').style.display = 'none';
     document.querySelectorAll('.dock-btn').forEach(d => d.style.display = 'none');
     pillEl.style.display = 'none';                       // hide the explore search bar
     sizeSheet();
+    arcLift = arcReveal = 0; planeT = -1;                // start collapsed so setDest doesn't flash a full arc
     setDest(code, lng, lat);
     detent = 'peek'; fsheet.style.transition = ''; setSheetTY(PEEK_TY);   // open low — ~3 flights showing
     syncChrome();                                         // flight sheet owns the bottom now — drop the city sheet
     frameFlight(1100);
+    playFlightReveal(1150);                               // plane flies SFO→dest, drawing the route in as the camera frames
     map.once('moveend', showAlternates);
   }
   function closeFlight() {
     if (!flightMode) return;
     flightMode = false; flightDest = null; sheetTY = 0; detent = 'peek';
     clearAlternates(); setRoute(null);
+    cancelAnimationFrame(arcRAF); arcLift = 1; arcReveal = 1; planeT = -1;
     arcSvg.style.display = 'none'; arcTime.style.display = 'none';
+    arcPlane.style.display = 'none'; arcRing.style.display = 'none';
     if (flightEndMarker) { flightEndMarker.remove(); flightEndMarker = null; }
     fsheet.style.transition = ''; fsheet.style.transform = 'translateY(108%)';
     SCREEN.querySelector('.cards-scroll').style.display = '';
     document.querySelectorAll('.dock-btn').forEach(d => d.style.display = '');
     pillEl.style.display = '';
     updateSearchBar(); syncChrome();                      // restore city chrome if we're still at a place
+    if (map.setProjection) map.setProjection({ type: 'globe' });      // back to the globe for explore mode
     if (preFlight) map.easeTo({ center: preFlight.c, zoom: preFlight.z, duration: 900, essential:true });
     preFlight = null;
   }
@@ -2324,11 +2444,6 @@ return maplibregl$1;
     const a = (CITY_DATA[regionCity] && CITY_DATA[regionCity].air) || ['LAX', -118.408, 33.942];
     openFlight(a[0], a[1], a[2]);
   });
-  // Placeholders for now — visual CTAs; behaviour TBD.
-  const bookStayBtn = document.getElementById('bookStay');
-  if (bookStayBtn) bookStayBtn.addEventListener('click', () => {});
-  const findExpBtn = document.getElementById('findExp');
-  if (findExpBtn) findExpBtn.addEventListener('click', () => {});
   document.querySelectorAll('.dock-btn').forEach(b => {
     b.addEventListener('click', () => {
       const m = b.dataset.mode;
@@ -2722,7 +2837,30 @@ return maplibregl$1;
       map.flyTo({ center:[+row.dataset.lng, +row.dataset.lat], zoom:8.5, duration:1100, essential:true })));
   }
 
-  map.on('load', start);
-  setTimeout(start, 400);</script>
+  map.on('load', start);   // ← PRODUCTION boot (untouched). Delete the lab block below and this line runs the real app.
+  // ===================== FLIGHTS LAB (delete THIS WHOLE BLOCK to merge back into index.html) =====================
+  // The entire divergence from production lives here and ONLY here, so merging back is literally
+  // "delete this block." It does three lab-only things:
+  //   1. pre-empts the cinematic intro — sets started=true before map 'load' fires, so start() above no-ops;
+  //   2. boots straight into the zoomed airport view (the one state we're polishing);
+  //   3. renames the tab + iOS home-screen label to "Flights Lab" via JS, so the static <head> stays
+  //      byte-identical to index.html and this build gets its own home-screen icon.
+  //
+  // NOTE: the flights ARC + REVEAL work is NOT in this block — it lives in the real functions
+  // (CSS .arc-*, archCtrl/bez/sampleRoute/drawArc, playFlightReveal/arrivePulse, and the calls inside
+  // openFlight / closeFlight / retarget / the #fsList row handler). THAT is the payload you carry into
+  // index.html; this block is just scaffolding you throw away.
+  window.openFlight = openFlight; window.closeFlight = closeFlight;   // console pokes
+  started = true; userTouched = true;                                  // suppress the cinematic intro before load fires
+  document.title = 'Flights Lab';
+  (function () { const m = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (m) m.setAttribute('content', 'Flights Lab'); })();
+  map.on('load', () => {                                                // lands the zoomed "search" view; tap a pin / Book a flight to fly out
+    map.resize();
+    const pc = document.querySelector('.cat[data-id="popular"]'); if (pc) pc.classList.add('active');
+    activeVibe = 'popular'; mode = 'air';                              // air tab → airport pins are the tappable targets
+    map.jumpTo({ center: SF, zoom: 4.2 });                            // the zoomed view every flight flies out from
+    render(true); updateLoc();
+  });
+  // =================== /FLIGHTS LAB ===================</script>
 </body>
 </html>
